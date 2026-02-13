@@ -1,0 +1,97 @@
+{
+  "name": "@quartz-community/plugin-template",
+  "version": "0.1.0",
+  "description": "Template repository for Quartz community plugins.",
+  "type": "module",
+  "license": "MIT",
+  "author": "Quartz Community",
+  "homepage": "https://quartz.jzhao.xyz",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/quartz-community/plugin-template"
+  },
+  "keywords": [
+    "quartz",
+    "quartz-plugin",
+    "plugin-template",
+    "remark",
+    "rehype",
+    "mdast",
+    "hast"
+  ],
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE",
+    "CHANGELOG.md"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./types": {
+      "types": "./dist/types.d.ts",
+      "import": "./dist/types.js"
+    },
+    "./components": {
+      "types": "./dist/components/index.d.ts",
+      "import": "./dist/components/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "sideEffects": false,
+  "scripts": {
+    "build": "tsup",
+    "prepare": "npm run build",
+    "dev": "tsup --watch",
+    "lint": "eslint . --max-warnings=0",
+    "format": "prettier . --check",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "check": "npm run typecheck && npm run lint && npm run format && npm run test"
+  },
+  "peerDependencies": {
+    "@jackyzha0/quartz": "^4.5.2",
+    "preact": "^10.0.0"
+  },
+  "peerDependenciesMeta": {
+    "@jackyzha0/quartz": {
+      "optional": true
+    },
+    "preact": {
+      "optional": false
+    }
+  },
+  "dependencies": {
+    "@quartz-community/types": "github:quartz-community/types",
+    "mdast-util-find-and-replace": "^3.0.1",
+    "rehype-slug": "^6.0.0",
+    "remark-gfm": "^4.0.1",
+    "remark-parse": "^11.0.0",
+    "remark-stringify": "^11.0.0",
+    "unified": "^11.0.5",
+    "unist-util-visit": "^5.0.0",
+    "vfile": "^6.0.3"
+  },
+  "devDependencies": {
+    "@types/hast": "^3.0.4",
+    "@types/mdast": "^4.0.4",
+    "@types/node": "^24.10.0",
+    "@typescript-eslint/eslint-plugin": "^7.18.0",
+    "@typescript-eslint/parser": "^7.18.0",
+    "eslint": "^8.57.0",
+    "eslint-config-prettier": "^9.1.0",
+    "preact": "^10.28.2",
+    "prettier": "^3.6.2",
+    "tsup": "^8.5.0",
+    "typescript": "^5.9.3",
+    "vitest": "^2.1.9"
+  },
+  "engines": {
+    "node": ">=22",
+    "npm": ">=10.9.2"
+  }
+}
