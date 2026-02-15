@@ -34,7 +34,6 @@ export interface ObsidianFlavoredMarkdownOptions {
   callouts: boolean;
   mermaid: boolean;
   parseTags: boolean;
-  parseArrows: boolean;
   parseBlockReferences: boolean;
   enableInHtmlEmbed: boolean;
   enableYouTubeEmbed: boolean;
@@ -52,7 +51,6 @@ const defaultOptions: ObsidianFlavoredMarkdownOptions = {
   callouts: true,
   mermaid: true,
   parseTags: true,
-  parseArrows: true,
   parseBlockReferences: true,
   enableInHtmlEmbed: false,
   enableYouTubeEmbed: true,
@@ -155,7 +153,7 @@ export const ObsidianFlavoredMarkdown: QuartzTransformerPlugin<
           highlights: opts.highlight,
           comments: opts.comments,
           tags: opts.parseTags,
-          arrows: opts.parseArrows,
+          customTaskChars: opts.enableCheckbox,
         },
       ]);
 
@@ -270,17 +268,6 @@ export const ObsidianFlavoredMarkdown: QuartzTransformerPlugin<
             });
           }
 
-          if (opts.parseArrows) {
-            visit(tree, "arrow", (node: any, index, parent) => {
-              if (parent == null || index == null) return;
-              parent.children[index] = {
-                type: "html",
-                value: `<span>${node.value}</span>`,
-              };
-              return SKIP;
-            });
-          }
-
           if (opts.parseTags) {
             visit(tree, "tag", (node: any, index, parent) => {
               if (parent == null || index == null) return;
@@ -314,7 +301,48 @@ export const ObsidianFlavoredMarkdown: QuartzTransformerPlugin<
           }
 
           if (opts.enableInHtmlEmbed) {
-            // TODO: remark-obsidian doesn't parse raw HTML blocks; keep this flag as a no-op for now.
+            visit(tree, "html", (node: Html) => {
+              if (opts.wikilinks) {
+                node.value = node.value.replace(
+                  wikilinkRegex,
+                  (fullMatch, rawFp?: string, rawHeading?: string, rawAlias?: string) => {
+                    const fp = rawFp?.trim() ?? "";
+                    const anchor = rawHeading?.trim().replace(/^#+/, "") ?? "";
+                    const isEmbed = fullMatch.startsWith("!");
+                    let alias = rawAlias?.replace(/^\\\||\|/, "").trim() ?? "";
+                    if (alias.length === 0) alias = fp;
+
+                    if (isEmbed) {
+                      return fullMatch;
+                    }
+
+                    const anchorPart = anchor ? `#${anchor}` : "";
+                    if (fp.match(externalLinkRegex)) {
+                      return `<a href="${fp}">${alias}</a>`;
+                    }
+                    return `<a href="${fp}${anchorPart}">${alias}</a>`;
+                  },
+                );
+              }
+
+              if (opts.highlight) {
+                node.value = node.value.replace(
+                  /==((?!=).+?)==/g,
+                  `<span class="text-highlight">$1</span>`,
+                );
+              }
+
+              if (opts.parseTags) {
+                node.value = node.value.replace(
+                  /(?<=^|\s)#((?:[-_\p{L}\d])+(?:\/[-_\p{L}\d]+)*)/gu,
+                  (_match, tag: string) => {
+                    if (/^[\d/]+$/.test(tag)) return `#${tag}`;
+                    const slug = slugTag(tag);
+                    return `<a href="${base}/tags/${slug}" class="tag-link">${slug}</a>`;
+                  },
+                );
+              }
+            });
           }
         };
       });
