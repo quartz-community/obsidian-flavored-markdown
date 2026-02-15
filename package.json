@@ -58,10 +58,11 @@
     }
   },
   "dependencies": {
+    "@quartz-community/rehype-obsidian": "github:quartz-community/rehype-obsidian",
+    "@quartz-community/remark-obsidian": "github:quartz-community/remark-obsidian",
     "@quartz-community/types": "github:quartz-community/types",
     "@quartz-community/utils": "github:quartz-community/utils",
     "hast-util-to-html": "^9.0.5",
-    "mdast-util-find-and-replace": "^3.0.1",
     "mdast-util-to-hast": "^13.2.1",
     "rehype-raw": "^7.0.0",
     "unified": "^11.0.5",
