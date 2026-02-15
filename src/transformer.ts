@@ -38,8 +38,10 @@ export interface ObsidianFlavoredMarkdownOptions {
   parseBlockReferences: boolean;
   enableInHtmlEmbed: boolean;
   enableYouTubeEmbed: boolean;
+  enableTweetEmbed: boolean;
   enableVideoEmbed: boolean;
   enableCheckbox: boolean;
+  enableObsidianUri: boolean;
   disableBrokenWikilinks: boolean;
 }
 
@@ -54,8 +56,10 @@ const defaultOptions: ObsidianFlavoredMarkdownOptions = {
   parseBlockReferences: true,
   enableInHtmlEmbed: false,
   enableYouTubeEmbed: true,
+  enableTweetEmbed: true,
   enableVideoEmbed: true,
   enableCheckbox: false,
+  enableObsidianUri: true,
   disableBrokenWikilinks: false,
 };
 
@@ -475,8 +479,10 @@ export const ObsidianFlavoredMarkdown: QuartzTransformerPlugin<
         {
           blockReferences: opts.parseBlockReferences,
           youTubeEmbed: opts.enableYouTubeEmbed,
+          tweetEmbed: opts.enableTweetEmbed,
           checkbox: opts.enableCheckbox,
           mermaid: opts.mermaid,
+          obsidianUri: opts.enableObsidianUri,
         },
       ]);
 
