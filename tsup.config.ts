@@ -55,6 +55,7 @@ export default defineConfig({
   target: "es2022",
   splitting: false,
   outDir: "dist",
+  noExternal: ["@quartz-community/remark-obsidian", "@quartz-community/rehype-obsidian"],
   esbuildOptions(options) {
     options.jsx = "automatic";
     options.jsxImportSource = "preact";
