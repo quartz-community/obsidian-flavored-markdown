@@ -8,9 +8,9 @@ const inlineScriptPlugin: Plugin = {
     const absWorkingDir = parentBuild.initialOptions.absWorkingDir ?? process.cwd();
 
     parentBuild.onLoad({ filter: /\.scss$/ }, async (args) => {
-      const fs = await import("fs");
-      const text = await fs.promises.readFile(args.path, "utf8");
-      return { contents: text, loader: "text" };
+      const sass = await import("sass");
+      const result = sass.compile(args.path);
+      return { contents: result.css, loader: "text" };
     });
 
     parentBuild.onLoad({ filter: /\.inline\.ts$/ }, async (args) => {
