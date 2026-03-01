@@ -210,13 +210,17 @@ export const ObsidianFlavoredMarkdown: QuartzTransformerPlugin<
                     value: `<iframe src="${url}" class="pdf"></iframe>`,
                   };
                 } else {
+                  // For page transclusions (e.g. ![[file.canvas]]), strip the file extension
+                  // so the embed URL targets the virtual page slug (which has no extension)
+                  // rather than the raw source file path.
+                  const transcludeUrl = slugifyFilePath(fp as FilePath, true);
                   const block = anchor ? `#${anchor}` : "";
                   replacement = {
                     type: "html",
                     data: { hProperties: { transclude: true } },
-                    value: `<blockquote class="transclude" data-url="${url}" data-block="${block}" data-embed-alias="${alias ?? ""}"><a href="${
-                      url + block
-                    }" class="transclude-inner">Transclude of ${url}${block}</a></blockquote>`,
+                    value: `<blockquote class="transclude" data-url="${transcludeUrl}" data-block="${block}" data-embed-alias="${alias ?? ""}"><a href="${
+                      transcludeUrl + block
+                    }" class="transclude-inner">Transclude of ${transcludeUrl}${block}</a></blockquote>`,
                   };
                 }
               } else if (fp.match(externalLinkRegex)) {
