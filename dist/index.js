@@ -24923,7 +24923,9 @@ var ObsidianFlavoredMarkdown = (userOpts) => {
                 if (wikilinkNode.embedded) {
                   const ext = default2.extname(fp).toLowerCase();
                   const url = slugifyFilePath(fp);
-                  if ([".jxl", ".png", ".jpg", ".jpeg", ".gif", ".bmp", ".webp"].includes(ext)) {
+                  if ([".jxl", ".png", ".jpg", ".jpeg", ".gif", ".bmp", ".webp", ".avif"].includes(
+                    ext
+                  )) {
                     const match = wikilinkImageEmbedRegex.exec(alias ?? "");
                     const alt = match?.groups?.alt ?? "";
                     const width = match?.groups?.width ?? "auto";

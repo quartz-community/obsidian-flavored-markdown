@@ -128,7 +128,7 @@ describe("SVG embed handling", () => {
 });
 
 describe("raster image embed handling", () => {
-  it.each([".jxl", ".png", ".jpg", ".jpeg", ".gif", ".bmp", ".webp"])(
+  it.each([".jxl", ".png", ".jpg", ".jpeg", ".gif", ".bmp", ".webp", ".avif"])(
     "renders %s embeds as image nodes",
     (ext) => {
       const tree = makeTree({ path: `photo${ext}`, embedded: true });
