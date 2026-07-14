@@ -207,7 +207,11 @@ export const ObsidianFlavoredMarkdown: QuartzTransformerPlugin<
                 if (wikilinkNode.embedded) {
                   const ext: string = path.extname(fp).toLowerCase();
                   const url = slugifyFilePath(fp as FilePath);
-                  if ([".jxl", ".png", ".jpg", ".jpeg", ".gif", ".bmp", ".webp"].includes(ext)) {
+                  if (
+                    [".jxl", ".png", ".jpg", ".jpeg", ".gif", ".bmp", ".webp", ".avif"].includes(
+                      ext,
+                    )
+                  ) {
                     const match = wikilinkImageEmbedRegex.exec(alias ?? "");
                     const alt = match?.groups?.alt ?? "";
                     const width = match?.groups?.width ?? "auto";
