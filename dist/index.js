@@ -24983,10 +24983,11 @@ var ObsidianFlavoredMarkdown = (userOpts) => {
                     const transcludeUrl = slugifyFilePath(fp, stripExt);
                     const isBlockRef = anchor.startsWith("^");
                     const block = anchor ? `#${isBlockRef ? anchor : slug(anchor)}` : "";
+                    const embedAlias = alias ?? (isBlockRef ? anchor : "");
                     replacement = {
                       type: "html",
                       data: { hProperties: { transclude: true } },
-                      value: `<blockquote class="transclude" data-url="${transcludeUrl}" data-block="${block}" data-embed-alias="${alias ?? ""}"><a href="${transcludeUrl + block}" class="transclude-inner">Transclude of ${transcludeUrl}${block}</a></blockquote>`
+                      value: `<blockquote class="transclude" data-url="${transcludeUrl}" data-block="${block}" data-embed-alias="${embedAlias}"><a href="${transcludeUrl + block}" class="transclude-inner">Transclude of ${transcludeUrl}${block}</a></blockquote>`
                     };
                   }
                 } else if (fp.match(externalLinkRegex)) {
