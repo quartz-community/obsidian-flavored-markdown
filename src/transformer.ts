@@ -278,10 +278,11 @@ export const ObsidianFlavoredMarkdown: QuartzTransformerPlugin<
                     // rehype-slug generates on heading elements.
                     const isBlockRef = anchor.startsWith("^");
                     const block = anchor ? `#${isBlockRef ? anchor : githubSlug(anchor)}` : "";
+                    const embedAlias = alias ?? (isBlockRef ? anchor : "");
                     replacement = {
                       type: "html",
                       data: { hProperties: { transclude: true } },
-                      value: `<blockquote class="transclude" data-url="${transcludeUrl}" data-block="${block}" data-embed-alias="${alias ?? ""}"><a href="${
+                      value: `<blockquote class="transclude" data-url="${transcludeUrl}" data-block="${block}" data-embed-alias="${embedAlias}"><a href="${
                         transcludeUrl + block
                       }" class="transclude-inner">Transclude of ${transcludeUrl}${block}</a></blockquote>`,
                     };
@@ -542,7 +543,7 @@ export const ObsidianFlavoredMarkdown: QuartzTransformerPlugin<
                 node.data = {
                   hProperties: {
                     ...(node.data?.hProperties ?? {}),
-                    className: classNames.join(" "),
+                    className: classNames,
                     "data-callout": calloutType,
                     "data-callout-fold": collapse,
                     "data-callout-metadata": calloutMetaData,

@@ -211,9 +211,7 @@ var codes = (
     lineFeed: -4,
     carriageReturnLineFeed: -3,
     horizontalTab: -2,
-    space: 32,
-    // `=`
-    greaterThan: 62}
+    space: 32}
 );
 var EXCLAMATION = 33;
 var HASH = 35;
@@ -418,8 +416,7 @@ function tokenize2(effects, ok32, nok) {
   }
   function content(code2) {
     if (code2 === null || isLineEnding2(code2)) return nok(code2);
-    if (!hasContent && (code2 === EQUALS || code2 === codes.greaterThan))
-      return nok(code2);
+    if (!hasContent && code2 === EQUALS) return nok(code2);
     if (code2 === EQUALS)
       return effects.attempt(close, closeAfter, contentConsume)(code2);
     effects.consume(code2);
@@ -1718,12 +1715,14 @@ var blockReferences = (tree, file) => {
       const stripped = lastChild.value.replace(blockReferenceRegex, "").trimEnd();
       if (stripped.length === 0) {
         children.pop();
-        if (isParent(parent)) {
-          for (let i2 = (index2 ?? 0) - 1; i2 >= 0; i2 -= 1) {
-            const sibling = parent.children[i2];
-            if (isElement(sibling)) {
-              applyBlockId(sibling, blockId, blocks);
-              return;
+        if (children.length === 0) {
+          if (isParent(parent)) {
+            for (let i2 = (index2 ?? 0) - 1; i2 >= 0; i2 -= 1) {
+              const sibling = parent.children[i2];
+              if (isElement(sibling)) {
+                applyBlockId(sibling, blockId, blocks);
+                return;
+              }
             }
           }
         }
@@ -12499,6 +12498,18 @@ var BIGINT = 8;
 
 // node_modules/@ungap/structured-clone/esm/deserialize.js
 var env = typeof self === "object" ? self : globalThis;
+var guard = (name, init) => {
+  switch (name) {
+    case "Function":
+    case "SharedWorker":
+    case "Worker":
+    case "eval":
+    case "setInterval":
+    case "setTimeout":
+      throw new TypeError("unable to deserialize " + name);
+  }
+  return new env[name](init);
+};
 var deserializer = ($4, _2) => {
   const as = (out, index2) => {
     $4.set(index2, out);
@@ -12544,7 +12555,10 @@ var deserializer = ($4, _2) => {
       }
       case ERROR: {
         const { name, message } = value;
-        return as(new env[name](message), index2);
+        return as(
+          typeof env[name] === "function" ? guard(name, message) : new Error(message),
+          index2
+        );
       }
       case BIGINT:
         return as(BigInt(value), index2);
@@ -12557,7 +12571,7 @@ var deserializer = ($4, _2) => {
         return as(new DataView(buffer), value);
       }
     }
-    return as(new env[type](value), index2);
+    return as(guard(type, value), index2);
   };
   return unpair;
 };
@@ -12590,8 +12604,8 @@ var typeOf = (value) => {
   }
   if (asString.includes("Array"))
     return [ARRAY, asString];
-  if (asString.includes("Error"))
-    return [ERROR, asString];
+  if (value instanceof Error)
+    return [ERROR, value.name || "Error"];
   return [OBJECT, asString];
 };
 var shouldSkip = ([TYPE, type]) => TYPE === PRIMITIVE && (type === "function" || type === "symbol");
@@ -12662,7 +12676,7 @@ var serializer = (strict, json, $4, _2) => {
         return index2;
       }
       case DATE:
-        return as([TYPE, value.toISOString()], value);
+        return as([TYPE, isNaN(value.getTime()) ? EMPTY : value.toISOString()], value);
       case REGEXP: {
         const { source, flags } = value;
         return as([TYPE, { source, flags }], value);
@@ -12944,6 +12958,7 @@ var html3 = create2({
     allowFullScreen: boolean2,
     allowPaymentRequest: boolean2,
     allowUserMedia: boolean2,
+    alpha: boolean2,
     alt: null,
     as: null,
     async: boolean2,
@@ -12957,8 +12972,12 @@ var html3 = create2({
     checked: boolean2,
     cite: null,
     className: spaceSeparated2,
+    closedBy: null,
+    colorSpace: null,
     cols: number2,
-    colSpan: null,
+    colSpan: number2,
+    command: null,
+    commandFor: null,
     content: null,
     contentEditable: booleanish2,
     controls: boolean2,
@@ -13138,8 +13157,10 @@ var html3 = create2({
     seamless: boolean2,
     selected: boolean2,
     shadowRootClonable: boolean2,
+    shadowRootCustomElementRegistry: boolean2,
     shadowRootDelegatesFocus: boolean2,
     shadowRootMode: null,
+    shadowRootSerializable: boolean2,
     shape: null,
     size: number2,
     sizes: null,
@@ -13276,8 +13297,11 @@ var html3 = create2({
     allowTransparency: null,
     autoCorrect: null,
     autoSave: null,
+    credentialless: boolean2,
     disablePictureInPicture: boolean2,
     disableRemotePlayback: boolean2,
+    exportParts: commaSeparated2,
+    part: spaceSeparated2,
     prefix: null,
     property: null,
     results: number2,
@@ -13331,6 +13355,7 @@ var svg3 = create2({
     markerEnd: "marker-end",
     markerMid: "marker-mid",
     markerStart: "marker-start",
+    maskType: "mask-type",
     navDown: "nav-down",
     navDownLeft: "nav-down-left",
     navDownRight: "nav-down-right",
@@ -13601,6 +13626,7 @@ var svg3 = create2({
     markerWidth: null,
     mask: null,
     maskContentUnits: null,
+    maskType: null,
     maskUnits: null,
     mathematical: null,
     max: null,
@@ -24983,10 +25009,11 @@ var ObsidianFlavoredMarkdown = (userOpts) => {
                     const transcludeUrl = slugifyFilePath(fp, stripExt);
                     const isBlockRef = anchor.startsWith("^");
                     const block = anchor ? `#${isBlockRef ? anchor : slug(anchor)}` : "";
+                    const embedAlias = alias ?? (isBlockRef ? anchor : "");
                     replacement = {
                       type: "html",
                       data: { hProperties: { transclude: true } },
-                      value: `<blockquote class="transclude" data-url="${transcludeUrl}" data-block="${block}" data-embed-alias="${alias ?? ""}"><a href="${transcludeUrl + block}" class="transclude-inner">Transclude of ${transcludeUrl}${block}</a></blockquote>`
+                      value: `<blockquote class="transclude" data-url="${transcludeUrl}" data-block="${block}" data-embed-alias="${embedAlias}"><a href="${transcludeUrl + block}" class="transclude-inner">Transclude of ${transcludeUrl}${block}</a></blockquote>`
                     };
                   }
                 } else if (fp.match(externalLinkRegex)) {
@@ -25210,7 +25237,7 @@ var ObsidianFlavoredMarkdown = (userOpts) => {
                 node.data = {
                   hProperties: {
                     ...node.data?.hProperties ?? {},
-                    className: classNames.join(" "),
+                    className: classNames,
                     "data-callout": calloutType,
                     "data-callout-fold": collapse,
                     "data-callout-metadata": calloutMetaData
