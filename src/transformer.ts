@@ -112,7 +112,7 @@ export const wikilinkRegex = new RegExp(
   /!?\[\[([^[]\]#|\\]+)?(#+[^[]\]#|\\]+)?(\\?\|[^[]\]#]*)?\]\]/g,
 );
 // from https://github.com/escwxyz/remark-obsidian-callout/blob/main/src/index.ts
-const calloutRegex = new RegExp(/^\[!([\w-]+)\|?(.+?)?\]([+-]?)/);
+const calloutRegex = new RegExp(/^\[!([\w -]+)(?:\|(.+?))?\]([+-]?)/);
 const calloutLineRegex = new RegExp(/^> *\[!\w+\|?.*?\][+-]?.*$/gm);
 // (?<=^| )             -> a lookbehind assertion, tag should start be separated by a space or be the start of the line
 // #(...)               -> capturing group, tag itself must start with #
@@ -466,7 +466,7 @@ export const ObsidianFlavoredMarkdown: QuartzTransformerPlugin<
               const match = firstLine.match(calloutRegex);
               if (match && match.input) {
                 const [calloutDirective, typeString, calloutMetaData, collapseChar] = match;
-                const typeStringValue = typeString ?? "";
+                const typeStringValue = typeString?.trim() ?? "";
                 const calloutType = canonicalizeCallout(typeStringValue.toLowerCase());
                 const collapse = collapseChar === "+" || collapseChar === "-";
                 const defaultState = collapseChar === "-" ? "collapsed" : "expanded";
