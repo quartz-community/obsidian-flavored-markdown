@@ -97,7 +97,7 @@
     "version": "1.0.0",
     "quartzVersion": ">=5.0.0",
     "dependencies": [],
-    "defaultOrder": 30,
+    "defaultOrder": 40,
     "defaultEnabled": true,
     "defaultOptions": {
       "comments": true,
