@@ -59,9 +59,11 @@
     "@quartz-community/rehype-obsidian": "^1.0.0",
     "@quartz-community/remark-obsidian": "^1.0.0",
     "@quartz-community/types": "^1.0.0",
-    "@quartz-community/utils": "^1.0.0"
+    "@quartz-community/utils": "^1.0.0",
+    "pele": "^1.8.0"
   },
   "devDependencies": {
+    "@changesets/cli": "^2.29.2",
     "@types/hast": "^3.0.4",
     "@types/mdast": "^4.0.4",
     "@types/node": "^24.10.0",
@@ -83,8 +85,7 @@
     "typescript": "^5.9.3",
     "unified": "^11.0.5",
     "unist-util-visit": "^5.1.0",
-    "vitest": "^2.1.9",
-    "@changesets/cli": "^2.29.2"
+    "vitest": "^2.1.9"
   },
   "engines": {
     "node": ">=22",
@@ -112,7 +113,8 @@
       "enableTweetEmbed": true,
       "enableVideoEmbed": true,
       "enableCheckbox": false,
-      "enableObsidianUri": true
+      "enableObsidianUri": true,
+      "diagramRenderer": "mermaid"
     },
     "optionSchema": {
       "comments": {
@@ -153,6 +155,13 @@
       },
       "enableObsidianUri": {
         "type": "boolean"
+      },
+      "diagramRenderer": {
+        "type": "string",
+        "enum": [
+          "mermaid",
+          "pele"
+        ]
       }
     }
   },

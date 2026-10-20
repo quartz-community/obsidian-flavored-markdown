@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+- `diagramRenderer: "pele"` draws Mermaid fences with [Pele](https://pele.run) (`pele/lazy` in `pele.inline.ts`). Default is still `"mermaid"`.
+
+### Changed
+
+- Mermaid.js is deprecated. Default stays `diagramRenderer: "mermaid"`; set `"pele"` to switch.
+
 ## 1.0.0
 
 ### Major Changes
