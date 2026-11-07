@@ -100,12 +100,12 @@ describe("inline footnotes", () => {
   });
 });
 
-describe("line breaks follow the HardLineBreaks plugin", () => {
-  it("a soft line ending is not a <br> by default", async () => {
-    expect(await render("one\ntwo\n")).not.toContain("<br>");
+describe("line breaks (strictLineBreaks, Obsidian's setting)", () => {
+  it("a soft line ending is a <br> under legacy (Obsidian's default)", async () => {
+    expect(await render("one\ntwo\n")).toMatch(/one<br>\s*two/);
   });
 
-  it("is a <br> when HardLineBreaks is enabled", async () => {
-    expect(await render("one\ntwo\n", {}, [{ name: "HardLineBreaks" }])).toContain("<br>");
+  it("is a space with strictLineBreaks: true", async () => {
+    expect(await render("one\ntwo\n", { strictLineBreaks: true })).not.toContain("<br>");
   });
 });

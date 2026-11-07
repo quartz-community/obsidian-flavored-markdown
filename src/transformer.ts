@@ -67,6 +67,12 @@ export interface ObsidianFlavoredMarkdownOptions {
    * use it for TOML (`+++`) frontmatter or plugins that add Markdown syntax.
    */
   preset: "legacy" | "strict";
+  /**
+   * Obsidian's "Strict line breaks" setting: when `true`, a single line break inside a paragraph
+   * is a space (CommonMark); when `false`, it is a `<br>`, as in Obsidian's default reading view.
+   * Defaults to `false` under `preset: "legacy"` and `true` under `"strict"`.
+   */
+  strictLineBreaks?: boolean;
   comments: boolean;
   highlight: boolean;
   wikilinks: boolean;
@@ -195,13 +201,6 @@ const mdastToHtml = (ast: PhrasingContent | Paragraph) => {
   return toHtml(hast, { allowDangerousHtml: true });
 };
 
-/** Whether the site turns soft line endings into <br> (the HardLineBreaks plugin). */
-function hasHardLineBreaks(ctx: unknown): boolean {
-  const transformers = (ctx as { cfg?: { plugins?: { transformers?: { name?: unknown }[] } } })?.cfg
-    ?.plugins?.transformers;
-  return (transformers ?? []).some((t) => t?.name === "HardLineBreaks");
-}
-
 /** Give a remark-obsidian `callout` node Quartz's callout markup (title bar + content wrapper). */
 export function renderCallout(node: CalloutNode): void {
   const [rawType = "", ...metadataParts] = node.calloutType.split("|");
@@ -264,7 +263,7 @@ export const ObsidianFlavoredMarkdown: QuartzTransformerPlugin<
 
   return {
     name: "ObsidianFlavoredMarkdown",
-    markdownPlugins(ctx) {
+    markdownPlugins() {
       const plugins: PluggableList = [];
 
       plugins.push([
@@ -277,9 +276,9 @@ export const ObsidianFlavoredMarkdown: QuartzTransformerPlugin<
           tags: opts.parseTags,
           customTaskChars: opts.enableCheckbox,
           callouts: opts.callouts,
-          // A soft line ending is a <br> only when the site uses hard line breaks (the
-          // HardLineBreaks plugin, remark-breaks); remark-obsidian would otherwise add them always.
-          positionedBreaks: hasHardLineBreaks(ctx),
+          // A soft line ending is a <br> unless strictLineBreaks (Obsidian's "Strict line breaks"
+          // setting); by default off under `legacy`, as in Obsidian, and on under `strict`.
+          positionedBreaks: !(opts.strictLineBreaks ?? opts.preset === "strict"),
         },
       ]);
 

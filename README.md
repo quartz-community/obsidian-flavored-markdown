@@ -38,21 +38,22 @@ ExternalPlugin.ObsidianFlavoredMarkdown({
 
 ## Configuration
 
-| Option                 | Type                     | Default     | Description                                                                                                                                 |
-| ---------------------- | ------------------------ | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
-| `preset`               | `"legacy"` \| `"strict"` | `"legacy"`  | `legacy`: parse exactly as Obsidian. `strict`: CommonMark/GFM + Obsidian syntax, keeps other plugins' syntax extensions (TOML frontmatter). |
-| `comments`             | `boolean`                | `true`      | Whether to parse Obsidian-style comments.                                                                                                   |
-| `highlight`            | `boolean`                | `true`      | Whether to parse Obsidian-style highlights.                                                                                                 |
-| `wikilinks`            | `boolean`                | `true`      | Whether to parse wikilinks.                                                                                                                 |
-| `callouts`             | `boolean`                | `true`      | Whether to parse callouts.                                                                                                                  |
-| `mermaid`              | `boolean`                | `true`      | Whether to parse Mermaid diagram fences.                                                                                                    |
-| `diagramRenderer`      | `"mermaid"` \| `"pele"`  | `"mermaid"` | Renderer for Mermaid fences. Default Mermaid.js; Pele is opt-in (Mermaid.js deprecated).                                                    |
-| `parseTags`            | `boolean`                | `true`      | Whether to parse tags.                                                                                                                      |
-| `parseBlockReferences` | `boolean`                | `true`      | Whether to parse block references.                                                                                                          |
-| `enableInHtmlEmbed`    | `boolean`                | `false`     | Whether to enable parsing in HTML embeds.                                                                                                   |
-| `enableYouTubeEmbed`   | `boolean`                | `true`      | Whether to enable YouTube embeds.                                                                                                           |
-| `enableVideoEmbed`     | `boolean`                | `true`      | Whether to enable video embeds.                                                                                                             |
-| `enableCheckbox`       | `boolean`                | `false`     | Whether to enable checkboxes.                                                                                                               |
+| Option                 | Type                     | Default     | Description                                                                                                                                          |
+| ---------------------- | ------------------------ | ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `preset`               | `"legacy"` \| `"strict"` | `"legacy"`  | `legacy`: parse exactly as Obsidian. `strict`: CommonMark/GFM + Obsidian syntax, keeps other plugins' syntax extensions (TOML frontmatter).          |
+| `strictLineBreaks`     | `boolean`                | by preset   | Obsidian's "Strict line breaks": `false` (default under `legacy`) renders a single line break as `<br>`; `true` (default under `strict`) as a space. |
+| `comments`             | `boolean`                | `true`      | Whether to parse Obsidian-style comments.                                                                                                            |
+| `highlight`            | `boolean`                | `true`      | Whether to parse Obsidian-style highlights.                                                                                                          |
+| `wikilinks`            | `boolean`                | `true`      | Whether to parse wikilinks.                                                                                                                          |
+| `callouts`             | `boolean`                | `true`      | Whether to parse callouts.                                                                                                                           |
+| `mermaid`              | `boolean`                | `true`      | Whether to parse Mermaid diagram fences.                                                                                                             |
+| `diagramRenderer`      | `"mermaid"` \| `"pele"`  | `"mermaid"` | Renderer for Mermaid fences. Default Mermaid.js; Pele is opt-in (Mermaid.js deprecated).                                                             |
+| `parseTags`            | `boolean`                | `true`      | Whether to parse tags.                                                                                                                               |
+| `parseBlockReferences` | `boolean`                | `true`      | Whether to parse block references.                                                                                                                   |
+| `enableInHtmlEmbed`    | `boolean`                | `false`     | Whether to enable parsing in HTML embeds.                                                                                                            |
+| `enableYouTubeEmbed`   | `boolean`                | `true`      | Whether to enable YouTube embeds.                                                                                                                    |
+| `enableVideoEmbed`     | `boolean`                | `true`      | Whether to enable video embeds.                                                                                                                      |
+| `enableCheckbox`       | `boolean`                | `false`     | Whether to enable checkboxes.                                                                                                                        |
 
 ## Documentation
 
