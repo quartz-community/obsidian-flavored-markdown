@@ -39,6 +39,7 @@ import mermaidStyle from "./styles/mermaid.inline.scss";
 // @ts-expect-error -- inline script import
 import peleScript from "./scripts/pele.inline";
 import peleStyle from "./styles/pele.inline.scss";
+import embedsStyle from "./styles/embeds.inline.scss";
 import { toHast } from "mdast-util-to-hast";
 import { toHtml } from "hast-util-to-html";
 
@@ -627,6 +628,13 @@ export const ObsidianFlavoredMarkdown: QuartzTransformerPlugin<
       const js: JSResource[] = [];
       const css: CSSResource[] = [];
       const assets: StaticAsset[] = [];
+
+      if (opts.wikilinks) {
+        css.push({
+          content: embedsStyle,
+          inline: true,
+        });
+      }
 
       if (opts.enableCheckbox) {
         js.push({
