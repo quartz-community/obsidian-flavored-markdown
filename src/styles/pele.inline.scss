@@ -39,13 +39,17 @@ code.mermaid,
     border-color: var(--secondary);
   }
 
-  &:focus {
-    outline: 0;
+  // Keyboard users must see the button they tabbed to.
+  &:focus-visible {
+    opacity: 1;
+    outline: 2px solid var(--secondary);
+    outline-offset: 2px;
   }
 }
 
 pre {
-  &:hover > .expand-button {
+  &:hover > .expand-button,
+  &:focus-within > .expand-button {
     opacity: 1;
     transition: 0.2s;
   }

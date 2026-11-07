@@ -1,172 +1,38 @@
-import { registerEscapeHandler, removeAllChildren } from "./util";
-import { mountAsync, type Mounted } from "pele/lazy";
+import type { Mounted } from "pele/lazy";
+import { setupDiagramPopup } from "./diagram-popup";
 
-interface Position {
-  x: number;
-  y: number;
-}
+type PeleLazy = typeof import("pele/lazy");
 
-class DiagramPanZoom {
-  private isDragging = false;
-  private startPan: Position = { x: 0, y: 0 };
-  private currentPan: Position = { x: 0, y: 0 };
-  private scale = 1;
-  private readonly MIN_SCALE = 0.5;
-  private readonly MAX_SCALE = 3;
+// Prepended by the transformer: where to load Pele from when this Quartz can't ship it.
+declare const __OFM_PELE_FALLBACK__: string;
 
-  cleanups: (() => void)[] = [];
-
-  constructor(
-    private container: HTMLElement,
-    private content: HTMLElement,
-  ) {
-    this.setupEventListeners();
-    this.setupNavigationControls();
-    this.resetTransform();
-  }
-
-  private setupEventListeners() {
-    const mouseDownHandler = this.onMouseDown.bind(this);
-    const mouseMoveHandler = this.onMouseMove.bind(this);
-    const mouseUpHandler = this.onMouseUp.bind(this);
-
-    const touchStartHandler = this.onTouchStart.bind(this);
-    const touchMoveHandler = this.onTouchMove.bind(this);
-    const touchEndHandler = this.onTouchEnd.bind(this);
-
-    const resizeHandler = this.resetTransform.bind(this);
-
-    this.container.addEventListener("mousedown", mouseDownHandler);
-    document.addEventListener("mousemove", mouseMoveHandler);
-    document.addEventListener("mouseup", mouseUpHandler);
-
-    this.container.addEventListener("touchstart", touchStartHandler, { passive: false });
-    document.addEventListener("touchmove", touchMoveHandler, { passive: false });
-    document.addEventListener("touchend", touchEndHandler);
-
-    window.addEventListener("resize", resizeHandler);
-
-    this.cleanups.push(
-      () => this.container.removeEventListener("mousedown", mouseDownHandler),
-      () => document.removeEventListener("mousemove", mouseMoveHandler),
-      () => document.removeEventListener("mouseup", mouseUpHandler),
-      () => this.container.removeEventListener("touchstart", touchStartHandler),
-      () => document.removeEventListener("touchmove", touchMoveHandler),
-      () => document.removeEventListener("touchend", touchEndHandler),
-      () => window.removeEventListener("resize", resizeHandler),
-    );
-  }
-
-  cleanup() {
-    for (const cleanup of this.cleanups) {
-      cleanup();
+/**
+ * Pele is loaded only on pages that have a Mermaid fence, with `import()`:
+ *
+ * - Quartz 5.1+ copies Pele's ESM build to static/plugins/obsidian-flavored-markdown/pele/
+ *   (plugin assets) — self-hosted, and `pele/lazy` fetches only the chunks for the diagram
+ *   types on the page;
+ * - older Quartz versions can't ship files, so the same Pele version is loaded from jsDelivr
+ *   (like the Mermaid.js renderer, which always loads from a CDN).
+ */
+let pele: Promise<PeleLazy> | undefined;
+function loadPele(): Promise<PeleLazy> {
+  pele ??= (async () => {
+    const staticUrl = window.quartzStaticUrl;
+    if (staticUrl) {
+      const url = new URL("plugins/obsidian-flavored-markdown/pele/lazy.js", staticUrl).href;
+      try {
+        return (await import(/* @vite-ignore */ url)) as PeleLazy;
+      } catch (err) {
+        console.warn(`[obsidian-flavored-markdown] Could not load ${url}; using the CDN.`, err);
+      }
     }
-  }
-
-  private setupNavigationControls() {
-    const controls = document.createElement("div");
-    controls.className = "mermaid-controls";
-
-    const zoomIn = this.createButton("+", () => this.zoom(0.1));
-    const zoomOut = this.createButton("-", () => this.zoom(-0.1));
-    const resetBtn = this.createButton("Reset", () => this.resetTransform());
-
-    controls.appendChild(zoomOut);
-    controls.appendChild(resetBtn);
-    controls.appendChild(zoomIn);
-
-    this.container.appendChild(controls);
-  }
-
-  private createButton(text: string, onClick: () => void): HTMLButtonElement {
-    const button = document.createElement("button");
-    button.textContent = text;
-    button.className = "mermaid-control-button";
-    button.addEventListener("click", onClick);
-    window.addCleanup(() => button.removeEventListener("click", onClick));
-    return button;
-  }
-
-  private onMouseDown(e: MouseEvent) {
-    if (e.button !== 0) return;
-    this.isDragging = true;
-    this.startPan = { x: e.clientX - this.currentPan.x, y: e.clientY - this.currentPan.y };
-    this.container.style.cursor = "grabbing";
-  }
-
-  private onMouseMove(e: MouseEvent) {
-    if (!this.isDragging) return;
-    e.preventDefault();
-
-    this.currentPan = {
-      x: e.clientX - this.startPan.x,
-      y: e.clientY - this.startPan.y,
-    };
-
-    this.updateTransform();
-  }
-
-  private onMouseUp() {
-    this.isDragging = false;
-    this.container.style.cursor = "grab";
-  }
-
-  private onTouchStart(e: TouchEvent) {
-    if (e.touches.length !== 1) return;
-    this.isDragging = true;
-    const touch = e.touches[0]!;
-    this.startPan = { x: touch.clientX - this.currentPan.x, y: touch.clientY - this.currentPan.y };
-  }
-
-  private onTouchMove(e: TouchEvent) {
-    if (!this.isDragging || e.touches.length !== 1) return;
-    e.preventDefault();
-
-    const touch = e.touches[0]!;
-    this.currentPan = {
-      x: touch.clientX - this.startPan.x,
-      y: touch.clientY - this.startPan.y,
-    };
-
-    this.updateTransform();
-  }
-
-  private onTouchEnd() {
-    this.isDragging = false;
-  }
-
-  private zoom(delta: number) {
-    const newScale = Math.min(Math.max(this.scale + delta, this.MIN_SCALE), this.MAX_SCALE);
-
-    const rect = this.content.getBoundingClientRect();
-    const centerX = rect.width / 2;
-    const centerY = rect.height / 2;
-
-    const scaleDiff = newScale - this.scale;
-    this.currentPan.x -= centerX * scaleDiff;
-    this.currentPan.y -= centerY * scaleDiff;
-
-    this.scale = newScale;
-    this.updateTransform();
-  }
-
-  private updateTransform() {
-    this.content.style.transform = `translate(${this.currentPan.x}px, ${this.currentPan.y}px) scale(${this.scale})`;
-  }
-
-  private resetTransform() {
-    const svg = this.content.querySelector("svg")!;
-    const rect = svg.getBoundingClientRect();
-    const width = rect.width / this.scale;
-    const height = rect.height / this.scale;
-
-    this.scale = 1;
-    this.currentPan = {
-      x: (this.container.clientWidth - width) / 2,
-      y: (this.container.clientHeight - height) / 2,
-    };
-    this.updateTransform();
-  }
+    return (await import(/* @vite-ignore */ __OFM_PELE_FALLBACK__)) as PeleLazy;
+  })();
+  pele.catch(() => {
+    pele = undefined; // let the next navigation retry
+  });
+  return pele;
 }
 
 function diagramSource(node: HTMLElement): string {
@@ -181,84 +47,47 @@ function diagramSource(node: HTMLElement): string {
   return node.textContent ?? "";
 }
 
-const mountedDiagrams = new WeakMap<HTMLElement, Mounted>();
+// One mount per code block, stored *before* awaiting it: `nav` and `render` can both run while
+// a mount is still pending, and must share it instead of mounting twice.
+const mounts = new WeakMap<HTMLElement, Promise<Mounted | undefined>>();
 
-async function renderPeleDiagrams() {
-  const center = document.querySelector(".center") as HTMLElement | null;
-  if (!center) return;
-  const nodes = center.querySelectorAll("code.mermaid") as NodeListOf<HTMLElement>;
-  if (nodes.length === 0) return;
-
-  for (const node of nodes) {
-    const source = diagramSource(node);
-    const existing = mountedDiagrams.get(node);
-    if (existing) {
-      existing.update(source);
-      continue;
-    }
-    const mounted = await mountAsync(node, source);
-    mountedDiagrams.set(node, mounted);
-    window.addCleanup(() => {
-      mountedDiagrams.get(node)?.destroy();
-      mountedDiagrams.delete(node);
+function mountDiagram(node: HTMLElement, source: string): Promise<Mounted | undefined> {
+  const existing = mounts.get(node);
+  if (existing) {
+    return existing.then((mounted) => {
+      if (mounted && mounted.source !== source) mounted.update(source);
+      return mounted;
     });
   }
-
-  for (let i = 0; i < nodes.length; i++) {
-    const codeBlock = nodes[i] as HTMLElement;
-    const pre = codeBlock.parentElement as HTMLPreElement;
-    const clipboardBtn = pre.querySelector(".clipboard-button") as HTMLButtonElement | null;
-    const expandBtn = pre.querySelector(".expand-button") as HTMLButtonElement | null;
-    if (!clipboardBtn || !expandBtn) continue;
-
-    const clipboardStyle = window.getComputedStyle(clipboardBtn);
-    const clipboardWidth =
-      clipboardBtn.offsetWidth +
-      parseFloat(clipboardStyle.marginLeft || "0") +
-      parseFloat(clipboardStyle.marginRight || "0");
-
-    expandBtn.style.right = `calc(${clipboardWidth}px + 0.3rem)`;
-    pre.prepend(expandBtn);
-
-    const popupContainer = pre.querySelector("#mermaid-container") as HTMLElement | null;
-    if (!popupContainer) continue;
-
-    let panZoom: DiagramPanZoom | null = null;
-    const showDiagram = () => {
-      const container = popupContainer.querySelector("#mermaid-space") as HTMLElement;
-      const content = popupContainer.querySelector(".mermaid-content") as HTMLElement;
-      if (!content) return;
-      removeAllChildren(content);
-
-      const svg = codeBlock.querySelector("svg");
-      if (!svg) return;
-      content.appendChild(svg.cloneNode(true) as SVGElement);
-
-      popupContainer.classList.add("active");
-      container.style.cursor = "grab";
-
-      panZoom = new DiagramPanZoom(container, content);
-    };
-
-    const hideDiagram = () => {
-      popupContainer.classList.remove("active");
-      panZoom?.cleanup();
-      panZoom = null;
-    };
-
-    expandBtn.addEventListener("click", showDiagram);
-    registerEscapeHandler(popupContainer, hideDiagram);
-
-    window.addCleanup(() => {
-      panZoom?.cleanup();
-      expandBtn.removeEventListener("click", showDiagram);
+  const pending = loadPele()
+    .then(({ mountAsync }) => mountAsync(node, source))
+    .catch((err: unknown) => {
+      console.error("[obsidian-flavored-markdown] Could not render a Mermaid diagram:", err);
+      mounts.delete(node);
+      return undefined;
     });
-  }
+  mounts.set(node, pending);
+  window.addCleanup(() => {
+    mounts.delete(node);
+    void pending.then((mounted) => mounted?.destroy());
+  });
+  return pending;
 }
 
-document.addEventListener("nav", () => {
-  void renderPeleDiagrams();
-});
-document.addEventListener("render", () => {
-  void renderPeleDiagrams();
-});
+async function renderPeleDiagrams() {
+  // `.center` is rendered by the Quartz page frame; fall back to the whole document so custom
+  // frames/page types without it still get their diagrams rendered.
+  const root: Element | Document = document.querySelector(".center") ?? document;
+  const nodes = [...root.querySelectorAll<HTMLElement>("code.mermaid")];
+  if (nodes.length === 0) return; // no diagrams → Pele is never downloaded
+
+  await Promise.all(
+    nodes.map(async (node) => {
+      const mounted = await mountDiagram(node, diagramSource(node));
+      if (mounted) setupDiagramPopup(node);
+    }),
+  );
+}
+
+document.addEventListener("nav", () => void renderPeleDiagrams());
+document.addEventListener("render", () => void renderPeleDiagrams());

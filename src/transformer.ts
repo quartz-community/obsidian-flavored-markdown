@@ -13,8 +13,15 @@ import type {
 } from "mdast";
 import type { Node } from "unist";
 import type { PluggableList } from "unified";
-import type { QuartzTransformerPlugin, JSResource, CSSResource } from "@quartz-community/types";
+import type {
+  QuartzTransformerPlugin,
+  JSResource,
+  CSSResource,
+  StaticAsset,
+} from "@quartz-community/types";
 import path from "path";
+import fs from "fs";
+import { createRequire } from "module";
 import remarkObsidian from "@quartz-community/remark-obsidian";
 import rehypeObsidian from "@quartz-community/rehype-obsidian";
 import rehypeRaw from "rehype-raw";
@@ -37,7 +44,29 @@ import { toHtml } from "hast-util-to-html";
 
 export type DiagramRenderer = "mermaid" | "pele";
 
+/**
+ * Pele's ESM build (lazy entry + one chunk per diagram type) and the matching CDN URL, resolved
+ * from the installed `pele` dependency. The directory is shipped as a plugin asset (Quartz 5.1+);
+ * the CDN URL is the fallback for older Quartz versions, which can't ship files.
+ */
+function peleDistribution(): { dir: string; cdn: string } {
+  const pkgPath = createRequire(import.meta.url).resolve("pele/package.json");
+  const version = (JSON.parse(fs.readFileSync(pkgPath, "utf8")) as { version: string }).version;
+  return {
+    dir: path.join(path.dirname(pkgPath), "dist", "esm"),
+    cdn: `https://cdn.jsdelivr.net/npm/pele@${version}/dist/esm/lazy.js`,
+  };
+}
+
 export interface ObsidianFlavoredMarkdownOptions {
+  /**
+   * How remark-obsidian parses Markdown. `legacy` (default) parses as Obsidian does (its
+   * remark-parse 8 fork), so pages render as in the app; it replaces the Markdown parser, so
+   * syntax extensions of other plugins are not consulted. `strict` parses CommonMark/GFM as
+   * specified (micromark) plus Obsidian's syntax, and keeps other plugins' syntax extensions —
+   * use it for TOML (`+++`) frontmatter or plugins that add Markdown syntax.
+   */
+  preset: "legacy" | "strict";
   comments: boolean;
   highlight: boolean;
   wikilinks: boolean;
@@ -55,6 +84,7 @@ export interface ObsidianFlavoredMarkdownOptions {
 }
 
 const defaultOptions: ObsidianFlavoredMarkdownOptions = {
+  preset: "legacy",
   comments: true,
   highlight: true,
   wikilinks: true,
@@ -118,9 +148,6 @@ export const externalLinkRegex = /^https?:\/\//i;
 export const wikilinkRegex = new RegExp(
   /!?\[\[([^[]\]#|\\]+)?(#+[^[]\]#|\\]+)?(\\?\|[^[]\]#]*)?\]\]/g,
 );
-// from https://github.com/escwxyz/remark-obsidian-callout/blob/main/src/index.ts
-const calloutRegex = new RegExp(/^\[!([\w-]+)\|?(.+?)?\]([+-]?)/);
-const calloutLineRegex = new RegExp(/^> *\[!\w+\|?.*?\][+-]?.*$/gm);
 // (?<=^| )             -> a lookbehind assertion, tag should start be separated by a space or be the start of the line
 // #(...)               -> capturing group, tag itself must start with #
 // (?:[-_\p{L}\d\p{Z}])+       -> non-capturing group, non-empty string of (Unicode-aware) alpha-numeric characters and symbols, hyphens and/or underscores
@@ -155,40 +182,104 @@ const getLiteralValue = (child: Node): string => {
   return "";
 };
 
+type CalloutNode = Parent & {
+  type: "callout";
+  /** Everything between `[!` and `]`, e.g. `note` or `note|wide`. */
+  calloutType: string;
+  /** `null`: not foldable; `true`: folded (`-`); `false`: foldable, open (`+`). */
+  collapsed: boolean | null;
+};
+
+const mdastToHtml = (ast: PhrasingContent | Paragraph) => {
+  const hast = toHast(ast, { allowDangerousHtml: true })!;
+  return toHtml(hast, { allowDangerousHtml: true });
+};
+
+/** Whether the site turns soft line endings into <br> (the HardLineBreaks plugin). */
+function hasHardLineBreaks(ctx: unknown): boolean {
+  const transformers = (ctx as { cfg?: { plugins?: { transformers?: { name?: unknown }[] } } })?.cfg
+    ?.plugins?.transformers;
+  return (transformers ?? []).some((t) => t?.name === "HardLineBreaks");
+}
+
+/** Give a remark-obsidian `callout` node Quartz's callout markup (title bar + content wrapper). */
+export function renderCallout(node: CalloutNode): void {
+  const [rawType = "", ...metadataParts] = node.calloutType.split("|");
+  const typeString = rawType.trim();
+  const calloutType = canonicalizeCallout(typeString.toLowerCase());
+  const metadata = metadataParts.join("|").trim() || undefined;
+  const collapse = node.collapsed !== null;
+
+  const [first, ...rest] = node.children;
+  const hasTitleNode = first?.type === ("calloutTitle" as string);
+  const titleChildren = hasTitleNode ? ((first as Parent).children as PhrasingContent[]) : [];
+  const body = (hasTitleNode ? rest : node.children) as (BlockContent | DefinitionContent)[];
+
+  // No title at all shows the type, as Obsidian does; an explicitly empty one (`&#x20;`) stays
+  // empty.
+  const title = mdastToHtml({
+    type: "paragraph",
+    children:
+      titleChildren.length > 0
+        ? titleChildren
+        : [{ type: "text", value: capitalize(typeString).replace(/-/g, " ") }],
+  });
+
+  const children: (BlockContent | DefinitionContent | Html)[] = [
+    {
+      type: "html",
+      value: `<div class="callout-title"><div class="callout-icon"></div><div class="callout-title-inner">${title}</div>${collapse ? `<div class="fold-callout-icon callout-fold"></div>` : ""}</div>`,
+    },
+  ];
+  // The body is wrapped in a `callout-content` div for the grid-based collapse animation.
+  if (body.length > 0) {
+    children.push({
+      type: "blockquote",
+      data: { hName: "div", hProperties: { className: ["callout-content"] } },
+      children: body,
+    });
+  }
+  node.children = children as Parent["children"];
+
+  const classNames = ["callout", calloutType];
+  if (collapse) classNames.push("is-collapsible");
+  if (node.collapsed === true) classNames.push("is-collapsed");
+  node.data = {
+    ...node.data,
+    hName: "blockquote",
+    hProperties: {
+      ...((node.data as { hProperties?: Record<string, unknown> } | undefined)?.hProperties ?? {}),
+      className: classNames,
+      "data-callout": calloutType,
+      "data-callout-fold": collapse,
+      "data-callout-metadata": metadata,
+    },
+  } as Parent["data"];
+}
+
 export const ObsidianFlavoredMarkdown: QuartzTransformerPlugin<
   Partial<ObsidianFlavoredMarkdownOptions>
 > = (userOpts) => {
   const opts = { ...defaultOptions, ...userOpts };
 
-  const mdastToHtml = (ast: PhrasingContent | Paragraph) => {
-    const hast = toHast(ast, { allowDangerousHtml: true })!;
-    return toHtml(hast, { allowDangerousHtml: true });
-  };
-
   return {
     name: "ObsidianFlavoredMarkdown",
-    textTransform(_ctx, src) {
-      // pre-transform blockquotes
-      if (opts.callouts) {
-        src = src.replace(calloutLineRegex, (value) => {
-          // force newline after title of callout
-          return value + "\n> ";
-        });
-      }
-
-      return src;
-    },
-    markdownPlugins(_ctx) {
+    markdownPlugins(ctx) {
       const plugins: PluggableList = [];
 
       plugins.push([
         remarkObsidian,
         {
+          preset: opts.preset,
           wikilinks: opts.wikilinks,
           highlights: opts.highlight,
           comments: opts.comments,
           tags: opts.parseTags,
           customTaskChars: opts.enableCheckbox,
+          callouts: opts.callouts,
+          // A soft line ending is a <br> only when the site uses hard line breaks (the
+          // HardLineBreaks plugin, remark-breaks); remark-obsidian would otherwise add them always.
+          positionedBreaks: hasHardLineBreaks(ctx),
         },
       ]);
 
@@ -447,118 +538,51 @@ export const ObsidianFlavoredMarkdown: QuartzTransformerPlugin<
         });
       }
 
+      // remark-obsidian reads Obsidian's inline footnotes (`text^[note]`) as `footnote` nodes,
+      // which mdast-util-to-hast no longer renders (they became a bare <div>). Turn each into a
+      // reference + definition, so it is numbered with the other footnotes, as in Obsidian.
+      plugins.push(() => {
+        return (tree: Root) => {
+          let count = 0;
+          visit(
+            tree,
+            (node) => node.type === "footnote",
+            (node, index, parent) => {
+              if (!parent || index === undefined) return;
+              const identifier = `inline-footnote-${++count}`;
+              parent.children.splice(index, 1, {
+                type: "footnoteReference",
+                identifier,
+                label: identifier,
+                position: node.position,
+              } as PhrasingContent);
+              // appended to the root while visiting, so footnotes nested in this one are
+              // converted too
+              tree.children.push({
+                type: "footnoteDefinition",
+                identifier,
+                label: identifier,
+                children: [
+                  { type: "paragraph", children: (node as Parent).children as PhrasingContent[] },
+                ],
+              });
+            },
+          );
+        };
+      });
+
       if (opts.callouts) {
+        // remark-obsidian parses `> [!type|metadata]± Title` into a `callout` node holding a
+        // `calloutTitle` and the body; render it with Quartz's callout markup.
         plugins.push(() => {
-          return (tree: Root, _file) => {
-            visit(tree, "blockquote", (node) => {
-              if (node.children.length === 0) {
-                return;
-              }
-
-              // find first line and callout content
-              const [firstChild, ...calloutContent] = node.children;
-              if (!firstChild || firstChild.type !== "paragraph") {
-                return;
-              }
-              const firstText = firstChild.children[0];
-              if (firstText?.type !== "text") {
-                return;
-              }
-
-              const text = firstText.value;
-              const [firstLine, ...remainingLines] = text.split("\n") as [string, ...string[]];
-              const remainingText = remainingLines.join("\n");
-              const restOfTitle = remainingLines.length > 0 ? [] : firstChild.children.slice(1);
-
-              const match = firstLine.match(calloutRegex);
-              if (match && match.input) {
-                const [calloutDirective, typeString, calloutMetaData, collapseChar] = match;
-                const typeStringValue = typeString ?? "";
-                const calloutType = canonicalizeCallout(typeStringValue.toLowerCase());
-                const collapse = collapseChar === "+" || collapseChar === "-";
-                const defaultState = collapseChar === "-" ? "collapsed" : "expanded";
-                const titleContent = match.input.slice(calloutDirective.length).trim();
-                const useDefaultTitle = titleContent === "" && restOfTitle.length === 0;
-                const titleNode: Paragraph = {
-                  type: "paragraph",
-                  children: [
-                    {
-                      type: "text",
-                      value: useDefaultTitle
-                        ? capitalize(typeStringValue).replace(/-/g, " ")
-                        : titleContent + " ",
-                    },
-                    ...restOfTitle,
-                  ],
-                };
-                const title = mdastToHtml(titleNode);
-
-                const toggleIcon = `<div class="fold-callout-icon callout-fold"></div>`;
-
-                const titleHtml: Html = {
-                  type: "html",
-                  value: `<div
-                  class="callout-title"
-                >
-                  <div class="callout-icon"></div>
-                  <div class="callout-title-inner">${title}</div>
-                  ${collapse ? toggleIcon : ""}
-                </div>`,
-                };
-
-                const blockquoteContent: (BlockContent | DefinitionContent)[] = [titleHtml];
-                const bodyInlineNodes =
-                  remainingLines.length > 0 ? firstChild.children.slice(1) : [];
-                if (remainingText.length > 0 || bodyInlineNodes.length > 0) {
-                  calloutContent.unshift({
-                    type: "paragraph",
-                    children: [
-                      ...(remainingText.length > 0
-                        ? [{ type: "text" as const, value: remainingText }]
-                        : []),
-                      ...bodyInlineNodes,
-                    ],
-                  } as BlockContent);
-                }
-
-                // For the rest of the MD callout elements other than the title, wrap them with
-                // two nested HTML <div>s (use some hacked mdhast component to achieve this) of
-                // class `callout-content` and `callout-content-inner` respectively for
-                // grid-based collapsible animation.
-                if (calloutContent.length > 0) {
-                  node.children = [
-                    node.children[0]!,
-                    {
-                      data: { hProperties: { className: ["callout-content"] }, hName: "div" },
-                      type: "blockquote",
-                      children: [...calloutContent],
-                    },
-                  ];
-                }
-
-                // replace first line of blockquote with title and rest of the paragraph text
-                node.children.splice(0, 1, ...blockquoteContent);
-
-                const classNames = ["callout", calloutType];
-                if (collapse) {
-                  classNames.push("is-collapsible");
-                }
-                if (defaultState === "collapsed") {
-                  classNames.push("is-collapsed");
-                }
-
-                // add properties to base blockquote
-                node.data = {
-                  hProperties: {
-                    ...(node.data?.hProperties ?? {}),
-                    className: classNames,
-                    "data-callout": calloutType,
-                    "data-callout-fold": collapse,
-                    "data-callout-metadata": calloutMetaData,
-                  },
-                };
-              }
-            });
+          return (tree: Root) => {
+            visit(
+              tree,
+              (node) => node.type === "callout",
+              (node) => {
+                renderCallout(node as CalloutNode);
+              },
+            );
           };
         });
       }
@@ -603,6 +627,7 @@ export const ObsidianFlavoredMarkdown: QuartzTransformerPlugin<
     externalResources() {
       const js: JSResource[] = [];
       const css: CSSResource[] = [];
+      const assets: StaticAsset[] = [];
 
       if (opts.enableCheckbox) {
         js.push({
@@ -622,12 +647,16 @@ export const ObsidianFlavoredMarkdown: QuartzTransformerPlugin<
 
       if (opts.mermaid) {
         if (opts.diagramRenderer === "pele") {
+          // Only a small loader runs on every page; Pele itself is imported on pages with a
+          // Mermaid fence (see pele.inline.ts).
+          const { dir, cdn } = peleDistribution();
           js.push({
-            script: peleScript,
+            script: `const __OFM_PELE_FALLBACK__ = ${JSON.stringify(cdn)};\n${peleScript}`,
             loadTime: "afterDOMReady",
             contentType: "inline",
             moduleType: "module",
           });
+          assets.push({ from: dir, to: "obsidian-flavored-markdown/pele" });
 
           css.push({
             content: peleStyle,
@@ -648,7 +677,7 @@ export const ObsidianFlavoredMarkdown: QuartzTransformerPlugin<
         }
       }
 
-      return { js, css };
+      return { js, css, assets };
     },
   };
 };
