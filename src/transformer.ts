@@ -163,6 +163,17 @@ const videoExtensionRegex = new RegExp(/\.(mp4|webm|ogv|avi|mov|flv|wmv|mkv|mpg|
 const wikilinkImageEmbedRegex = new RegExp(
   /^(?<alt>(?!^\d*x?\d*$).*?)?(\|?\s*?(?<width>\d+)(x(?<height>\d+))?)?$/,
 );
+// Obsidian's size suffix on Markdown images: `![alt|300](url)`, `![alt|100x145](url)`.
+const markdownImageSizeRegex = /^(?<alt>.*?)\|\s*(?<width>\d+)(?:x(?<height>\d+))?\s*$/;
+
+/** Escapes a value for a double-quoted HTML attribute. */
+function escapeAttribute(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/"/g, "&quot;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
 
 type WikilinkNode = Node & {
   type: "wikilink";
@@ -330,7 +341,7 @@ export const ObsidianFlavoredMarkdown: QuartzTransformerPlugin<
                     const height = match?.groups?.height ?? "auto";
                     replacement = {
                       type: "html",
-                      value: `<object data="${url}" type="image/svg+xml" width="${width}" height="${height}" aria-label="${alt}"></object>`,
+                      value: `<object data="${escapeAttribute(url)}" type="image/svg+xml" width="${width}" height="${height}" aria-label="${escapeAttribute(alt)}"></object>`,
                     };
                   } else if (
                     [
@@ -517,6 +528,25 @@ export const ObsidianFlavoredMarkdown: QuartzTransformerPlugin<
               }
             });
           }
+        };
+      });
+
+      // `![alt|300](url)`: Obsidian reads a trailing `|width` or `|widthxheight` in a Markdown
+      // image's alt text as its size (jackyzha0/quartz#2505).
+      plugins.push(() => {
+        return (tree: Root) => {
+          visit(tree, "image", (node) => {
+            const match = markdownImageSizeRegex.exec(node.alt ?? "");
+            if (!match?.groups) return;
+            const { alt = "", width, height } = match.groups;
+            node.alt = alt.trim();
+            node.data ??= {};
+            node.data.hProperties = {
+              ...(node.data.hProperties ?? {}),
+              width,
+              ...(height ? { height } : {}),
+            };
+          });
         };
       });
 
