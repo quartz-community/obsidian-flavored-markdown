@@ -1,4 +1,5 @@
 import { registerEscapeHandler, removeAllChildren } from "./util";
+import { setupMermaidControls } from "./mermaid-controls";
 
 interface Position {
   x: number;
@@ -186,8 +187,10 @@ const cssVars = [
 
 let mermaidImport = undefined;
 async function renderMermaidDiagrams() {
-  const center = document.querySelector(".center") as HTMLElement;
-  const nodes = center.querySelectorAll("code.mermaid") as NodeListOf<HTMLElement>;
+  // `.center` is rendered by the Quartz page frame; fall back to the whole document so
+  // custom frames/page types without it still get their diagrams rendered.
+  const root: Element | Document = document.querySelector(".center") ?? document;
+  const nodes = root.querySelectorAll("code.mermaid") as NodeListOf<HTMLElement>;
   if (nodes.length === 0) return;
 
   mermaidImport ||= await import(
@@ -246,34 +249,21 @@ async function renderMermaidDiagrams() {
 
   for (let i = 0; i < nodes.length; i++) {
     const codeBlock = nodes[i] as HTMLElement;
-    const pre = codeBlock.parentElement as HTMLPreElement;
-    const clipboardBtn = pre.querySelector(".clipboard-button") as HTMLButtonElement;
-    const expandBtn = pre.querySelector(".expand-button") as HTMLButtonElement;
-
-    const clipboardStyle = window.getComputedStyle(clipboardBtn);
-    const clipboardWidth =
-      clipboardBtn.offsetWidth +
-      parseFloat(clipboardStyle.marginLeft || "0") +
-      parseFloat(clipboardStyle.marginRight || "0");
-
-    // Set expand button position
-    expandBtn.style.right = `calc(${clipboardWidth}px + 0.3rem)`;
-    pre.prepend(expandBtn);
-
-    // query popup container
-    const popupContainer = pre.querySelector("#mermaid-container") as HTMLElement;
-    if (!popupContainer) return;
+    const controls = setupMermaidControls(codeBlock.parentElement);
+    if (!controls) continue;
+    const { expandBtn, popupContainer } = controls;
 
     let panZoom: DiagramPanZoom | null = null;
     const showMermaid = () => {
-      const container = popupContainer.querySelector("#mermaid-space") as HTMLElement;
-      const content = popupContainer.querySelector(".mermaid-content") as HTMLElement;
-      if (!content) return;
+      const container = popupContainer.querySelector<HTMLElement>("#mermaid-space");
+      const content = popupContainer.querySelector<HTMLElement>(".mermaid-content");
+      if (!container || !content) return;
       removeAllChildren(content);
 
       // Clone the mermaid content
-      const mermaidContent = codeBlock.querySelector("svg")!.cloneNode(true) as SVGElement;
-      content.appendChild(mermaidContent);
+      const svg = codeBlock.querySelector("svg");
+      if (!svg) return;
+      content.appendChild(svg.cloneNode(true) as SVGElement);
 
       // Show container
       popupContainer.classList.add("active");

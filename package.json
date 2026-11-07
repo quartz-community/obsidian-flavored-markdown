@@ -154,6 +154,50 @@
       "enableObsidianUri": {
         "type": "boolean"
       }
+    },
+    "capabilities": {
+      "provides": {
+        "data": [
+          "hasMermaidDiagram",
+          "blocks",
+          "htmlAst"
+        ],
+        "dom": [
+          ".callout",
+          ".transclude",
+          ".mermaid",
+          ".expand-button",
+          "#mermaid-container"
+        ]
+      },
+      "requires": {
+        "data": [
+          "slug"
+        ],
+        "dom": [
+          {
+            "name": ".internal",
+            "from": "crawl-links",
+            "reason": "wikilinks and embeds stay page-relative, so links and embedded files (images, SVG, PDF) break"
+          }
+        ]
+      },
+      "optional": {
+        "data": [
+          {
+            "name": "frontmatter",
+            "from": "note-properties",
+            "reason": "inline #tags are not merged into the page tags"
+          }
+        ],
+        "dom": [
+          {
+            "name": ".clipboard-button",
+            "from": "syntax-highlighting",
+            "reason": "mermaid expand button is not offset"
+          }
+        ]
+      }
     }
   },
   "publishConfig": {
