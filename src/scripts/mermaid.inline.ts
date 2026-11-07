@@ -12,6 +12,39 @@ const cssVars = [
   "--codeFont",
 ] as const;
 
+let colorCanvas: CanvasRenderingContext2D | null | undefined;
+
+/**
+ * Mermaid's colour parser only understands plain colour literals, so theme variables such as
+ * `hsl(calc(...))`, `var(--other)` or `oklch(...)` would make it throw. Let the browser resolve the
+ * variable to a concrete colour, falling back to the raw value.
+ */
+function resolveColor(name: string, raw: string): string {
+  if (!raw.trim() || !CSS.supports("color", raw.trim())) return raw;
+
+  const probe = document.createElement("span");
+  probe.style.display = "none";
+  probe.style.color = `var(${name})`;
+  document.body.appendChild(probe);
+  const computed = window.getComputedStyle(probe).color;
+  probe.remove();
+
+  if (/^(rgba?\(|#)/.test(computed)) return computed;
+
+  // Other colour spaces (e.g. oklch) serialize as-is; rasterize to get sRGB values.
+  if (colorCanvas === undefined) {
+    const canvas = document.createElement("canvas");
+    canvas.width = canvas.height = 1;
+    colorCanvas = canvas.getContext("2d", { willReadFrequently: true });
+  }
+  if (!colorCanvas || !computed) return computed || raw;
+  colorCanvas.clearRect(0, 0, 1, 1);
+  colorCanvas.fillStyle = computed;
+  colorCanvas.fillRect(0, 0, 1, 1);
+  const [r, g, b, a] = colorCanvas.getImageData(0, 0, 1, 1).data;
+  return a === 255 ? `rgb(${r}, ${g}, ${b})` : `rgba(${r}, ${g}, ${b}, ${(a! / 255).toFixed(3)})`;
+}
+
 let mermaidImport = undefined;
 async function renderMermaidDiagrams() {
   // `.center` is rendered by the Quartz page frame; fall back to the whole document so
@@ -43,7 +76,8 @@ async function renderMermaidDiagrams() {
 
     const computedStyleMap = cssVars.reduce(
       (acc, key) => {
-        acc[key] = window.getComputedStyle(document.documentElement).getPropertyValue(key);
+        const raw = window.getComputedStyle(document.documentElement).getPropertyValue(key);
+        acc[key] = key === "--codeFont" ? raw : resolveColor(key, raw);
         return acc;
       },
       {} as Record<(typeof cssVars)[number], string>,
