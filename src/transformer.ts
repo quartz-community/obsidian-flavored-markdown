@@ -29,8 +29,13 @@ import checkboxScript from "./scripts/checkbox.inline";
 // @ts-expect-error -- inline script import
 import mermaidScript from "./scripts/mermaid.inline";
 import mermaidStyle from "./styles/mermaid.inline.scss";
+// @ts-expect-error -- inline script import
+import peleScript from "./scripts/pele.inline";
+import peleStyle from "./styles/pele.inline.scss";
 import { toHast } from "mdast-util-to-hast";
 import { toHtml } from "hast-util-to-html";
+
+export type DiagramRenderer = "mermaid" | "pele";
 
 export interface ObsidianFlavoredMarkdownOptions {
   comments: boolean;
@@ -38,6 +43,7 @@ export interface ObsidianFlavoredMarkdownOptions {
   wikilinks: boolean;
   callouts: boolean;
   mermaid: boolean;
+  diagramRenderer: DiagramRenderer;
   parseTags: boolean;
   parseBlockReferences: boolean;
   enableInHtmlEmbed: boolean;
@@ -54,6 +60,7 @@ const defaultOptions: ObsidianFlavoredMarkdownOptions = {
   wikilinks: true,
   callouts: true,
   mermaid: true,
+  diagramRenderer: "mermaid",
   parseTags: true,
   parseBlockReferences: true,
   enableInHtmlEmbed: false,
@@ -614,17 +621,31 @@ export const ObsidianFlavoredMarkdown: QuartzTransformerPlugin<
       }
 
       if (opts.mermaid) {
-        js.push({
-          script: mermaidScript,
-          loadTime: "afterDOMReady",
-          contentType: "inline",
-          moduleType: "module",
-        });
+        if (opts.diagramRenderer === "pele") {
+          js.push({
+            script: peleScript,
+            loadTime: "afterDOMReady",
+            contentType: "inline",
+            moduleType: "module",
+          });
 
-        css.push({
-          content: mermaidStyle,
-          inline: true,
-        });
+          css.push({
+            content: peleStyle,
+            inline: true,
+          });
+        } else {
+          js.push({
+            script: mermaidScript,
+            loadTime: "afterDOMReady",
+            contentType: "inline",
+            moduleType: "module",
+          });
+
+          css.push({
+            content: mermaidStyle,
+            inline: true,
+          });
+        }
       }
 
       return { js, css };

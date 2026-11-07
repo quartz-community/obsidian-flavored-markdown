@@ -6,6 +6,8 @@ vi.mock("../src/scripts/callout.inline", () => ({ default: "" }));
 vi.mock("../src/scripts/checkbox.inline", () => ({ default: "" }));
 vi.mock("../src/scripts/mermaid.inline", () => ({ default: "" }));
 vi.mock("../src/styles/mermaid.inline.scss", () => ({ default: "" }));
+vi.mock("../src/scripts/pele.inline", () => ({ default: "" }));
+vi.mock("../src/styles/pele.inline.scss", () => ({ default: "" }));
 
 import { ObsidianFlavoredMarkdown } from "../src/transformer";
 
