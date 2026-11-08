@@ -45,7 +45,8 @@
     "typecheck": "tsc --noEmit",
     "check": "npm run typecheck && npm run lint && npm run format && npm run test",
     "prepublishOnly": "npm run build",
-    "release": "npm run build && changeset publish"
+    "release": "npm run build && changeset publish",
+    "version-packages": "changeset version && npm install --package-lock-only --ignore-scripts --no-audit --no-fund"
   },
   "peerDependencies": {
     "preact": "^10.0.0"
@@ -56,12 +57,14 @@
     }
   },
   "dependencies": {
-    "@quartz-community/rehype-obsidian": "^1.0.0",
-    "@quartz-community/remark-obsidian": "^1.0.0",
-    "@quartz-community/types": "^1.0.0",
-    "@quartz-community/utils": "^1.0.0"
+    "@quartz-community/rehype-obsidian": "^1.2.0",
+    "@quartz-community/remark-obsidian": "^2.1.0",
+    "@quartz-community/types": "^1.1.0",
+    "@quartz-community/utils": "^1.0.0",
+    "pele": "^1.13.0"
   },
   "devDependencies": {
+    "@changesets/cli": "^2.29.2",
     "@types/hast": "^3.0.4",
     "@types/mdast": "^4.0.4",
     "@types/node": "^24.10.0",
@@ -83,8 +86,7 @@
     "typescript": "^5.9.3",
     "unified": "^11.0.5",
     "unist-util-visit": "^5.1.0",
-    "vitest": "^2.1.9",
-    "@changesets/cli": "^2.29.2"
+    "vitest": "^2.1.9"
   },
   "engines": {
     "node": ">=22",
@@ -97,9 +99,10 @@
     "version": "1.0.0",
     "quartzVersion": ">=5.0.0",
     "dependencies": [],
-    "defaultOrder": 30,
+    "defaultOrder": 40,
     "defaultEnabled": true,
     "defaultOptions": {
+      "preset": "legacy",
       "comments": true,
       "highlight": true,
       "wikilinks": true,
@@ -112,9 +115,20 @@
       "enableTweetEmbed": true,
       "enableVideoEmbed": true,
       "enableCheckbox": false,
-      "enableObsidianUri": true
+      "enableObsidianUri": true,
+      "diagramRenderer": "mermaid"
     },
     "optionSchema": {
+      "preset": {
+        "type": "string",
+        "enum": [
+          "legacy",
+          "strict"
+        ]
+      },
+      "strictLineBreaks": {
+        "type": "boolean"
+      },
       "comments": {
         "type": "boolean"
       },
@@ -153,6 +167,57 @@
       },
       "enableObsidianUri": {
         "type": "boolean"
+      },
+      "diagramRenderer": {
+        "type": "string",
+        "enum": [
+          "mermaid",
+          "pele"
+        ]
+      }
+    },
+    "capabilities": {
+      "provides": {
+        "data": [
+          "hasMermaidDiagram",
+          "blocks",
+          "htmlAst"
+        ],
+        "dom": [
+          ".callout",
+          ".transclude",
+          ".mermaid",
+          ".expand-button",
+          "#mermaid-container"
+        ]
+      },
+      "requires": {
+        "data": [
+          "slug"
+        ],
+        "dom": [
+          {
+            "name": ".internal",
+            "from": "crawl-links",
+            "reason": "wikilinks and embeds stay page-relative, so links and embedded files (images, SVG, PDF) break"
+          }
+        ]
+      },
+      "optional": {
+        "data": [
+          {
+            "name": "frontmatter",
+            "from": "note-properties",
+            "reason": "inline #tags are not merged into the page tags"
+          }
+        ],
+        "dom": [
+          {
+            "name": ".clipboard-button",
+            "from": "syntax-highlighting",
+            "reason": "mermaid expand button is not offset"
+          }
+        ]
       }
     }
   },

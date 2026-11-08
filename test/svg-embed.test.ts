@@ -6,6 +6,9 @@ vi.mock("../src/scripts/callout.inline", () => ({ default: "" }));
 vi.mock("../src/scripts/checkbox.inline", () => ({ default: "" }));
 vi.mock("../src/scripts/mermaid.inline", () => ({ default: "" }));
 vi.mock("../src/styles/mermaid.inline.scss", () => ({ default: "" }));
+vi.mock("../src/scripts/pele.inline", () => ({ default: "" }));
+vi.mock("../src/styles/pele.inline.scss", () => ({ default: "" }));
+vi.mock("../src/styles/embeds.inline.scss", () => ({ default: "/* embeds */" }));
 
 import { ObsidianFlavoredMarkdown } from "../src/transformer";
 
@@ -144,5 +147,23 @@ describe("raster image embed handling", () => {
 
     expect(result.type).toBe("image");
     expect((result as unknown as Html).value).toBeUndefined();
+  });
+});
+
+describe("SVG embed styles (jackyzha0/quartz#2452)", () => {
+  it("ships the embed stylesheet that caps <object> SVG width when wikilinks are enabled", () => {
+    const resources = ObsidianFlavoredMarkdown().externalResources!({} as never);
+    expect(resources?.css?.map((c) => ("content" in c ? c.content : undefined))).toContain(
+      "/* embeds */",
+    );
+  });
+
+  it("does not ship it when wikilinks are disabled", () => {
+    const resources = ObsidianFlavoredMarkdown({ wikilinks: false }).externalResources!(
+      {} as never,
+    );
+    expect(resources?.css?.map((c) => ("content" in c ? c.content : undefined))).not.toContain(
+      "/* embeds */",
+    );
   });
 });

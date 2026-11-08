@@ -1,0 +1,9 @@
+// Embedded SVGs (`![[file.svg]]`) render as <object>, which, unlike <img>, isn't capped by
+// Quartz's base styles: keep wide SVGs inside the article and preserve their aspect ratio.
+article object[type="image/svg+xml"] {
+  max-width: 100%;
+
+  &[height="auto"] {
+    height: auto;
+  }
+}
