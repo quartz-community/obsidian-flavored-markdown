@@ -1,0 +1,12 @@
+// An inline `#tag` without a tag page renders as a <span> (no link): give it the look Quartz's
+// base styles give tag links (`a.internal.tag-link`).
+article span.tag-link {
+  background-color: var(--highlight);
+  padding: 0 0.1rem;
+  border-radius: 5px;
+  line-height: 1.4rem;
+
+  &::before {
+    content: "#";
+  }
+}

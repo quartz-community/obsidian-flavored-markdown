@@ -14,6 +14,7 @@ import type {
 import type { Node } from "unist";
 import type { PluggableList } from "unified";
 import type {
+  BuildCtx,
   QuartzTransformerPlugin,
   JSResource,
   CSSResource,
@@ -40,10 +41,38 @@ import mermaidStyle from "./styles/mermaid.inline.scss";
 import peleScript from "./scripts/pele.inline";
 import peleStyle from "./styles/pele.inline.scss";
 import embedsStyle from "./styles/embeds.inline.scss";
+import tagsStyle from "./styles/tags.inline.scss";
 import { toHast } from "mdast-util-to-hast";
 import { toHtml } from "hast-util-to-html";
 
 export type DiagramRenderer = "mermaid" | "pele";
+
+/**
+ * Whether an inline `#tag` has a page to link to. Tags are parsed before any page is emitted, so
+ * this can't look the page up: a tag has a page when a page type named `TagPage` (the tag-page
+ * plugin) is enabled, or when the content has a hand-written `tags/<tag>` or `tags/<tag>/index`
+ * page. Without a build context (older Quartz, tests) every tag links, as before.
+ */
+export function tagPageChecker(
+  ctx: Partial<Pick<BuildCtx, "cfg" | "allSlugs">> | undefined,
+): (tag: string) => boolean {
+  if (!ctx?.cfg) return () => true;
+  const plugins = ctx.cfg.plugins as Partial<Record<string, Array<{ name?: string }>>> | undefined;
+  const generated = [...(plugins?.pageTypes ?? []), ...(plugins?.emitters ?? [])].some(
+    (plugin) => plugin?.name === "TagPage",
+  );
+  if (generated) return () => true;
+  const slugs = new Set<string>(ctx.allSlugs ?? []);
+  return (tag) => slugs.has(`tags/${tag}`) || slugs.has(`tags/${tag}/index`);
+}
+
+function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
 
 /**
  * Pele's ESM build (lazy entry + one chunk per diagram type) and the matching CDN URL, resolved
@@ -275,8 +304,9 @@ export const ObsidianFlavoredMarkdown: QuartzTransformerPlugin<
 
   return {
     name: "ObsidianFlavoredMarkdown",
-    markdownPlugins() {
+    markdownPlugins(ctx) {
       const plugins: PluggableList = [];
+      const hasTagPage = tagPageChecker(ctx);
 
       plugins.push([
         remarkObsidian,
@@ -466,6 +496,16 @@ export const ObsidianFlavoredMarkdown: QuartzTransformerPlugin<
                   frontmatter.tags = [...new Set([...noteTags, tag])];
                 }
 
+                if (!hasTagPage(tag)) {
+                  // No page for this tag (tag-page disabled): a tag without a link.
+                  parent.children[index] = {
+                    type: "text",
+                    value: tag,
+                    data: { hName: "span", hProperties: { className: ["tag-link"] } },
+                  };
+                  return SKIP;
+                }
+
                 const tagLink: Link = {
                   type: "link",
                   url: base + `/tags/${tag}`,
@@ -522,6 +562,8 @@ export const ObsidianFlavoredMarkdown: QuartzTransformerPlugin<
                   (_match, tag: string) => {
                     if (/^[\d/]+$/.test(tag)) return `#${tag}`;
                     const slug = slugTag(tag);
+                    if (!hasTagPage(slug))
+                      return `<span class="tag-link">${escapeHtml(slug)}</span>`;
                     return `<a href="${base}/tags/${slug}" class="tag-link">${slug}</a>`;
                   },
                 );
@@ -662,6 +704,13 @@ export const ObsidianFlavoredMarkdown: QuartzTransformerPlugin<
       if (opts.wikilinks) {
         css.push({
           content: embedsStyle,
+          inline: true,
+        });
+      }
+
+      if (opts.parseTags) {
+        css.push({
+          content: tagsStyle,
           inline: true,
         });
       }
