@@ -45,7 +45,8 @@
     "typecheck": "tsc --noEmit",
     "check": "npm run typecheck && npm run lint && npm run format && npm run test",
     "prepublishOnly": "npm run build",
-    "release": "npm run build && changeset publish"
+    "release": "npm run build && changeset publish",
+    "version-packages": "changeset version && npm install --package-lock-only --ignore-scripts --no-audit --no-fund"
   },
   "peerDependencies": {
     "preact": "^10.0.0"
