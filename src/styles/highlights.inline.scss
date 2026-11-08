@@ -1,0 +1,30 @@
+// Highlights render as <mark class="text-highlight">; Quartz's base styles give `.text-highlight`
+// its background. A bare <mark> also forces black text, which is unreadable in dark mode.
+mark.text-highlight {
+  color: inherit;
+}
+
+// Coloured highlights (Obsidian 1.14): `==🔴 text==` → <mark data-highlight="red">, set by
+// rehype-obsidian. Obsidian's accent colours at a strength that keeps text readable in light and
+// dark themes.
+mark.text-highlight[data-highlight] {
+  background-color: color-mix(in srgb, var(--highlight-colour) 30%, transparent);
+}
+mark.text-highlight[data-highlight="red"] {
+  --highlight-colour: #e93147;
+}
+mark.text-highlight[data-highlight="orange"] {
+  --highlight-colour: #ec7500;
+}
+mark.text-highlight[data-highlight="yellow"] {
+  --highlight-colour: #e0ac00;
+}
+mark.text-highlight[data-highlight="green"] {
+  --highlight-colour: #08b94e;
+}
+mark.text-highlight[data-highlight="blue"] {
+  --highlight-colour: #086ddd;
+}
+mark.text-highlight[data-highlight="purple"] {
+  --highlight-colour: #7852ee;
+}
