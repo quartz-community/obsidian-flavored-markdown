@@ -59,7 +59,7 @@
   "dependencies": {
     "@quartz-community/rehype-obsidian": "^1.2.0",
     "@quartz-community/remark-obsidian": "^2.1.0",
-    "@quartz-community/types": "^1.0.0",
+    "@quartz-community/types": "^1.1.0",
     "@quartz-community/utils": "^1.0.0",
     "pele": "^1.13.0"
   },
