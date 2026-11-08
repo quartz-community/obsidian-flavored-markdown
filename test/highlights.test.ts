@@ -46,7 +46,7 @@ describe("highlights", () => {
     const node = (tree.children[0] as Paragraph).children[0] as unknown as {
       children: Array<{ value: string }>;
     };
-    expect(node.children[0].value).toBe("🔴 red");
+    expect(node.children[0]?.value).toBe("🔴 red");
   });
 
   it("in HTML embeds render as <mark class=text-highlight>", () => {
