@@ -42,6 +42,7 @@ import peleScript from "./scripts/pele.inline";
 import peleStyle from "./styles/pele.inline.scss";
 import embedsStyle from "./styles/embeds.inline.scss";
 import tagsStyle from "./styles/tags.inline.scss";
+import highlightsStyle from "./styles/highlights.inline.scss";
 import { toHast } from "mdast-util-to-hast";
 import { toHtml } from "hast-util-to-html";
 
@@ -214,19 +215,12 @@ type WikilinkNode = Node & {
 
 type HighlightNode = Parent & {
   type: "highlight";
+  data?: { hName?: string; hProperties?: Record<string, unknown> };
 };
 
 type TagNode = Literal & {
   type: "tag";
   value: string;
-};
-
-const getLiteralValue = (child: Node): string => {
-  const literalChild = child as { value?: unknown };
-  if (typeof literalChild.value === "string") {
-    return literalChild.value;
-  }
-  return "";
 };
 
 type CalloutNode = Parent & {
@@ -461,15 +455,16 @@ export const ObsidianFlavoredMarkdown: QuartzTransformerPlugin<
             visit(
               tree,
               (node) => node.type === "highlight",
-              (node, index: number | undefined, parent: Parent | undefined) => {
-                if (parent == null || index == null) return;
+              (node) => {
+                // Keep the node and its children (formatting, links, tags) and render it as
+                // <mark>, as Obsidian does. rehype-obsidian then colours a highlight that starts
+                // with a colour emoji (`==🔴 text==` → <mark data-highlight="red">).
                 const highlightNode = node as HighlightNode;
-                const text = highlightNode.children?.map(getLiteralValue).join("") ?? "";
-                parent.children[index] = {
-                  type: "html",
-                  value: `<span class="text-highlight">${text}</span>`,
+                highlightNode.data = {
+                  ...highlightNode.data,
+                  hName: "mark",
+                  hProperties: { className: ["text-highlight"] },
                 };
-                return SKIP;
               },
             );
           }
@@ -552,7 +547,7 @@ export const ObsidianFlavoredMarkdown: QuartzTransformerPlugin<
               if (opts.highlight) {
                 node.value = node.value.replace(
                   /==((?!=).+?)==/g,
-                  `<span class="text-highlight">$1</span>`,
+                  `<mark class="text-highlight">$1</mark>`,
                 );
               }
 
@@ -704,6 +699,13 @@ export const ObsidianFlavoredMarkdown: QuartzTransformerPlugin<
       if (opts.wikilinks) {
         css.push({
           content: embedsStyle,
+          inline: true,
+        });
+      }
+
+      if (opts.highlight) {
+        css.push({
+          content: highlightsStyle,
           inline: true,
         });
       }
