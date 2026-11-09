@@ -9,32 +9,25 @@ Both renderers are only loaded on pages with a Mermaid fence. On Quartz 5.1+ Pel
 ## Installation
 
 ```bash
-npx quartz plugin add github:quartz-community/obsidian-flavored-markdown
+npx quartz plugin add @quartz-community/obsidian-flavored-markdown
 ```
 
 ## Usage
 
+This plugin is already enabled in the default `quartz.config.yaml`:
+
 ```yaml title="quartz.config.yaml"
 plugins:
-  - source: github:quartz-community/obsidian-flavored-markdown
+  - source: "@quartz-community/obsidian-flavored-markdown"
     enabled: true
     options:
       enableInHtmlEmbed: false
       enableCheckbox: true
       # diagramRenderer: pele
+    order: 40
 ```
 
-For advanced use cases, you can override in TypeScript:
-
-```ts title="quartz.ts (override)"
-import * as ExternalPlugin from "./.quartz/plugins";
-
-ExternalPlugin.ObsidianFlavoredMarkdown({
-  enableInHtmlEmbed: false,
-  enableCheckbox: true,
-  diagramRenderer: "pele",
-});
-```
+This plugin must run after [github-flavored-markdown](https://github.com/quartz-community/github-flavored-markdown) (order `40` and `30` in the default config): where both claim the same syntax (`~~` strikethrough, for example), the plugin registered later wins.
 
 ## Configuration
 
@@ -52,8 +45,12 @@ ExternalPlugin.ObsidianFlavoredMarkdown({
 | `parseBlockReferences` | `boolean`                | `true`      | Whether to parse block references.                                                                                                                   |
 | `enableInHtmlEmbed`    | `boolean`                | `false`     | Whether to enable parsing in HTML embeds.                                                                                                            |
 | `enableYouTubeEmbed`   | `boolean`                | `true`      | Whether to enable YouTube embeds.                                                                                                                    |
+| `enableTweetEmbed`     | `boolean`                | `true`      | Whether to embed tweets (Twitter/X URLs) as static blockquotes.                                                                                      |
 | `enableVideoEmbed`     | `boolean`                | `true`      | Whether to enable video embeds.                                                                                                                      |
-| `enableCheckbox`       | `boolean`                | `false`     | Whether to enable checkboxes.                                                                                                                        |
+| `enableCheckbox`       | `boolean`                | `false`     | Whether to enable interactive checkboxes, incl. custom task characters (`- [?]`). The default `quartz.config.yaml` turns it on.                      |
+| `enableObsidianUri`    | `boolean`                | `true`      | Whether to mark `obsidian://` links with a CSS class and data attribute.                                                                             |
+
+`disableBrokenWikilinks` is no longer an option of this plugin: it is part of Quartz's built-in link processing, as `configuration.links.disableBrokenWikilinks`.
 
 ## Documentation
 
