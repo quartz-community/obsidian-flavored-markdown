@@ -45,6 +45,10 @@ import tagsStyle from "./styles/tags.inline.scss";
 import highlightsStyle from "./styles/highlights.inline.scss";
 import { toHast } from "mdast-util-to-hast";
 import { toHtml } from "hast-util-to-html";
+import {
+  hoistSurplusCellFootnotes,
+  removeSurplusFootnoteReferences,
+} from "./util/surplus-footnotes";
 
 export type DiagramRenderer = "mermaid" | "pele";
 
@@ -635,6 +639,8 @@ export const ObsidianFlavoredMarkdown: QuartzTransformerPlugin<
               });
             },
           );
+          // After the inline footnotes became references, so those in surplus cells count too.
+          hoistSurplusCellFootnotes(tree);
         };
       });
 
@@ -688,6 +694,9 @@ export const ObsidianFlavoredMarkdown: QuartzTransformerPlugin<
           obsidianUri: opts.enableObsidianUri,
         },
       ]);
+      // After rehype-obsidian, whose footnote renumbering must still count the references
+      // in surplus table cells (see util/surplus-footnotes.ts).
+      plugins.push(() => removeSurplusFootnoteReferences);
 
       return plugins;
     },
