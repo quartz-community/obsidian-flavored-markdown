@@ -6,12 +6,23 @@ on:
   push:
     branches: [main]
     tags: ["v*"]
+  # Called by release.yml to check the changesets version PR, which gets no CI of its own
+  # (its commits are pushed with GITHUB_TOKEN, and GITHUB_TOKEN events trigger no workflows).
+  workflow_call:
+    inputs:
+      ref:
+        description: "Commit to check out and check (default: the triggering commit)"
+        type: string
+        required: false
+        default: ""
 
 jobs:
   check:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
       - uses: actions/setup-node@v4
         with:
           node-version: 22
