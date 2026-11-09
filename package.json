@@ -60,7 +60,7 @@
     "@quartz-community/rehype-obsidian": "^1.2.0",
     "@quartz-community/remark-obsidian": "^2.1.0",
     "@quartz-community/types": "^1.1.0",
-    "@quartz-community/utils": "^1.0.0",
+    "@quartz-community/utils": "^1.1.0",
     "pele": "^1.13.0"
   },
   "devDependencies": {
@@ -72,7 +72,6 @@
     "@typescript-eslint/parser": "^7.18.0",
     "eslint": "^8.57.0",
     "eslint-config-prettier": "^9.1.0",
-    "github-slugger": "^2.0.0",
     "hast": "^1.0.0",
     "hast-util-to-html": "^9.0.5",
     "hast-util-to-jsx-runtime": "^2.3.6",
