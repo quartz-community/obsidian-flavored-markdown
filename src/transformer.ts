@@ -54,6 +54,7 @@ import {
   hoistSurplusCellFootnotes,
   removeSurplusFootnoteReferences,
 } from "./util/surplus-footnotes";
+import { removeWikilinkMarkers, wikilinkData, WIKILINK_ATTRIBUTE } from "./util/wikilink-marker";
 
 export type DiagramRenderer = "mermaid" | "pele";
 
@@ -351,7 +352,10 @@ export const ObsidianFlavoredMarkdown: QuartzTransformerPlugin<
                   const url = slugifyFilePath(fp as FilePath);
                   if ([".jxl", ".png", ".jpg", ".jpeg", ".gif", ".bmp", ".webp"].includes(ext)) {
                     const match = wikilinkImageEmbedRegex.exec(alias ?? "");
-                    const alt = match?.groups?.alt ?? "";
+                    // As in Obsidian: the alias, or the path as written when the alias is empty or
+                    // only a size (`![[pic.png]]` and `![[pic.png|100]]` → alt "pic.png"), which
+                    // also names a missing file (“missing%20file.png”, not percent-decoded)
+                    const alt = match?.groups?.alt || fp;
                     const width = match?.groups?.width ?? "auto";
                     const height = match?.groups?.height ?? "auto";
                     const imageNode: Image = {
@@ -433,6 +437,7 @@ export const ObsidianFlavoredMarkdown: QuartzTransformerPlugin<
                     type: "link",
                     url: fp,
                     children: [{ type: "text", value: alias ?? fp }],
+                    data: wikilinkData(),
                   };
                   replacement = linkNode;
                 } else {
@@ -450,6 +455,7 @@ export const ObsidianFlavoredMarkdown: QuartzTransformerPlugin<
                         value: alias ?? (fp && anchor ? `${fp} > ${anchor}` : fp || anchor),
                       },
                     ],
+                    data: wikilinkData(),
                   };
                   replacement = linkNode;
                 }
@@ -548,9 +554,9 @@ export const ObsidianFlavoredMarkdown: QuartzTransformerPlugin<
                       ? `#${isBlockRef ? anchor : slugHeading(anchor)}`
                       : "";
                     if (fp.match(externalLinkRegex)) {
-                      return `<a href="${fp}">${alias}</a>`;
+                      return `<a href="${fp}" ${WIKILINK_ATTRIBUTE}>${alias}</a>`;
                     }
-                    return `<a href="${fp}${anchorPart}">${alias}</a>`;
+                    return `<a href="${fp}${anchorPart}" ${WIKILINK_ATTRIBUTE}>${alias}</a>`;
                   },
                 );
               }
@@ -704,6 +710,8 @@ export const ObsidianFlavoredMarkdown: QuartzTransformerPlugin<
       // After rehype-obsidian, whose footnote renumbering must still count the references
       // in surplus table cells (see util/surplus-footnotes.ts).
       plugins.push(() => removeSurplusFootnoteReferences);
+      // rehype-obsidian has read the wikilink marker (a wikilink's `^id` names no block)
+      plugins.push(() => removeWikilinkMarkers);
 
       return plugins;
     },
