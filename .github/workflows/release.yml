@@ -17,6 +17,11 @@ jobs:
       contents: write
       pull-requests: write
       id-token: write
+      # Only for the pending commit status on the version PR (see version-pr-status).
+      statuses: write
+    outputs:
+      pr-number: ${{ steps.changesets.outputs.pullRequestNumber }}
+      pr-sha: ${{ steps.version-pr.outputs.sha }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -26,6 +31,7 @@ jobs:
           registry-url: "https://registry.npmjs.org"
       - run: npm install
       - name: Create Release PR or Publish
+        id: changesets
         uses: changesets/action@v1
         with:
           publish: npm run release
@@ -34,3 +40,51 @@ jobs:
           commit: "chore: version package"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # The version PR's commits are pushed with GITHUB_TOKEN, which triggers no workflows, so
+      # the lockfile `version-packages` rewrote would never be checked. Pin the PR head and mark
+      # it pending; the version-pr-ci job below runs ci.yml on it and reports the result.
+      - name: Mark version PR head as pending
+        id: version-pr
+        if: steps.changesets.outputs.pullRequestNumber != ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR: ${{ steps.changesets.outputs.pullRequestNumber }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          sha=$(gh api "repos/$GITHUB_REPOSITORY/pulls/$PR" --jq .head.sha)
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+          gh api "repos/$GITHUB_REPOSITORY/statuses/$sha" \
+            -f state=pending -f context="CI / version PR" \
+            -f description="Running ci.yml on the version PR" -f target_url="$RUN_URL"
+
+  version-pr-ci:
+    needs: release
+    if: needs.release.outputs.pr-sha != ''
+    permissions:
+      contents: read
+    uses: ./.github/workflows/ci.yml
+    with:
+      ref: ${{ needs.release.outputs.pr-sha }}
+
+  version-pr-status:
+    needs: [release, version-pr-ci]
+    if: always() && needs.release.outputs.pr-sha != ''
+    runs-on: ubuntu-latest
+    permissions:
+      statuses: write
+    steps:
+      - name: Report CI result on the version PR
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SHA: ${{ needs.release.outputs.pr-sha }}
+          RESULT: ${{ needs.version-pr-ci.result }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          case "$RESULT" in
+            success) state=success; description="ci.yml passed on the version PR" ;;
+            cancelled) state=error; description="ci.yml was cancelled" ;;
+            *) state=failure; description="ci.yml failed on the version PR ($RESULT)" ;;
+          esac
+          gh api "repos/$GITHUB_REPOSITORY/statuses/$SHA" \
+            -f state="$state" -f context="CI / version PR" \
+            -f description="$description" -f target_url="$RUN_URL"
