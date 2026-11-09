@@ -27,8 +27,13 @@ import remarkObsidian from "@quartz-community/remark-obsidian";
 import rehypeObsidian from "@quartz-community/rehype-obsidian";
 import rehypeRaw from "rehype-raw";
 import { SKIP, visit } from "unist-util-visit";
-import { pathToRoot, slugTag, slugifyFilePath, capitalize } from "@quartz-community/utils";
-import { slug as githubSlug } from "github-slugger";
+import {
+  pathToRoot,
+  slugHeading,
+  slugTag,
+  slugifyFilePath,
+  capitalize,
+} from "@quartz-community/utils";
 import type { FilePath, FullSlug } from "@quartz-community/utils";
 // @ts-expect-error -- inline script import
 import calloutScript from "./scripts/callout.inline";
@@ -45,6 +50,10 @@ import tagsStyle from "./styles/tags.inline.scss";
 import highlightsStyle from "./styles/highlights.inline.scss";
 import { toHast } from "mdast-util-to-hast";
 import { toHtml } from "hast-util-to-html";
+import {
+  hoistSurplusCellFootnotes,
+  removeSurplusFootnoteReferences,
+} from "./util/surplus-footnotes";
 
 export type DiagramRenderer = "mermaid" | "pele";
 
@@ -408,9 +417,9 @@ export const ObsidianFlavoredMarkdown: QuartzTransformerPlugin<
                     const transcludeUrl = slugifyFilePath(fp as FilePath, stripExt);
                     // Block references (^id) use exact key lookup — keep as-is.
                     // Heading anchors must be slugified to match the ids that
-                    // rehype-slug generates on heading elements.
+                    // heading producers give headings (the shared slugHeading).
                     const isBlockRef = anchor.startsWith("^");
-                    const block = anchor ? `#${isBlockRef ? anchor : githubSlug(anchor)}` : "";
+                    const block = anchor ? `#${isBlockRef ? anchor : slugHeading(anchor)}` : "";
                     replacement = {
                       type: "html",
                       data: { hProperties: { transclude: true } },
@@ -428,10 +437,10 @@ export const ObsidianFlavoredMarkdown: QuartzTransformerPlugin<
                   replacement = linkNode;
                 } else {
                   // Heading anchors must be slugified to match the ids that
-                  // rehype-slug generates on heading elements.
+                  // heading producers give headings (the shared slugHeading).
                   // Block references (^id) use exact key lookup — keep as-is.
                   const isBlockRef = anchor.startsWith("^");
-                  const anchorPart = anchor ? `#${isBlockRef ? anchor : githubSlug(anchor)}` : "";
+                  const anchorPart = anchor ? `#${isBlockRef ? anchor : slugHeading(anchor)}` : "";
                   const linkNode: Link = {
                     type: "link",
                     url: fp + anchorPart,
@@ -535,7 +544,9 @@ export const ObsidianFlavoredMarkdown: QuartzTransformerPlugin<
                     }
 
                     const isBlockRef = anchor.startsWith("^");
-                    const anchorPart = anchor ? `#${isBlockRef ? anchor : githubSlug(anchor)}` : "";
+                    const anchorPart = anchor
+                      ? `#${isBlockRef ? anchor : slugHeading(anchor)}`
+                      : "";
                     if (fp.match(externalLinkRegex)) {
                       return `<a href="${fp}">${alias}</a>`;
                     }
@@ -635,6 +646,8 @@ export const ObsidianFlavoredMarkdown: QuartzTransformerPlugin<
               });
             },
           );
+          // After the inline footnotes became references, so those in surplus cells count too.
+          hoistSurplusCellFootnotes(tree);
         };
       });
 
@@ -688,6 +701,9 @@ export const ObsidianFlavoredMarkdown: QuartzTransformerPlugin<
           obsidianUri: opts.enableObsidianUri,
         },
       ]);
+      // After rehype-obsidian, whose footnote renumbering must still count the references
+      // in surplus table cells (see util/surplus-footnotes.ts).
+      plugins.push(() => removeSurplusFootnoteReferences);
 
       return plugins;
     },
