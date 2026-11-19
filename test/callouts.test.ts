@@ -32,7 +32,7 @@ async function render(
 describe("callouts (remark-obsidian callout nodes → Quartz markup)", () => {
   it("renders type, title, icon and content wrapper", async () => {
     const html = await render("> [!tip] Read this\n> Body text\n");
-    expect(html).toContain('<blockquote class="callout tip" data-callout="tip">');
+    expect(html).toContain('<div class="callout tip" data-callout="tip">');
     expect(html).toContain(
       '<div class="callout-title"><div class="callout-icon"></div><div class="callout-title-inner"><p>Read this</p></div></div>',
     );
@@ -48,7 +48,7 @@ describe("callouts (remark-obsidian callout nodes → Quartz markup)", () => {
   it("keeps custom types, metadata and fold state", async () => {
     const folded = await render("> [!my-type|wide]- Folded\n> body\n");
     expect(folded).toContain(
-      '<blockquote class="callout my-type is-collapsible is-collapsed" data-callout="my-type" data-callout-fold data-callout-metadata="wide">',
+      '<div class="callout my-type is-collapsible is-collapsed" data-callout="my-type" data-callout-fold data-callout-metadata="wide">',
     );
     expect(folded).toContain('<div class="fold-callout-icon callout-fold"></div>');
     const open = await render("> [!note]+ Open\n> body\n");
@@ -59,7 +59,7 @@ describe("callouts (remark-obsidian callout nodes → Quartz markup)", () => {
   it("renders inline Markdown in titles and nested callouts", async () => {
     const html = await render("> [!info] A **bold** title\n> > [!warning] Inner\n> > inner body\n");
     expect(html).toContain("<p>A <strong>bold</strong> title</p>");
-    expect(html).toContain('<blockquote class="callout warning" data-callout="warning">');
+    expect(html).toContain('<div class="callout warning" data-callout="warning">');
   });
 
   it("a title-only callout has no content wrapper", async () => {

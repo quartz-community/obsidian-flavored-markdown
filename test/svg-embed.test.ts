@@ -153,17 +153,18 @@ describe("raster image embed handling", () => {
 describe("SVG embed styles (jackyzha0/quartz#2452)", () => {
   it("ships the embed stylesheet that caps <object> SVG width when wikilinks are enabled", () => {
     const resources = ObsidianFlavoredMarkdown().externalResources!({} as never);
-    expect(resources?.css?.map((c) => ("content" in c ? c.content : undefined))).toContain(
-      "/* embeds */",
-    );
+    const contents = resources?.css?.map((c) => ("content" in c ? c.content : "")) ?? [];
+    // Wrapped in Quartz's base layer so themes can override it.
+    expect(
+      contents.some((c) => c?.includes("/* embeds */") && c.startsWith("@layer quartz-base")),
+    ).toBe(true);
   });
 
   it("does not ship it when wikilinks are disabled", () => {
     const resources = ObsidianFlavoredMarkdown({ wikilinks: false }).externalResources!(
       {} as never,
     );
-    expect(resources?.css?.map((c) => ("content" in c ? c.content : undefined))).not.toContain(
-      "/* embeds */",
-    );
+    const contents = resources?.css?.map((c) => ("content" in c ? c.content : "")) ?? [];
+    expect(contents.some((c) => c?.includes("/* embeds */"))).toBe(false);
   });
 });
