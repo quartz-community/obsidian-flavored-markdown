@@ -84,7 +84,7 @@ describe("inline #tags", () => {
     expect(node).toMatchObject({
       type: "text",
       value: "my-tag",
-      data: { hName: "span", hProperties: { className: ["tag-link"] } },
+      data: { hName: "span", hProperties: { className: ["tag-link", "tag"] } },
     });
   });
 
@@ -99,14 +99,14 @@ describe("inline #tags", () => {
   it("in HTML embeds render as a span when there is no page", () => {
     const tree = transform(htmlTree("<div>see #my-tag</div>"), ctx(["ContentPage"]));
     expect((tree.children[0] as { value: string }).value).toBe(
-      '<div>see <span class="tag-link">my-tag</span></div>',
+      '<div>see <span class="tag-link tag">my-tag</span></div>',
     );
   });
 
   it("in HTML embeds link when the tag has a page", () => {
     const tree = transform(htmlTree("<div>see #my-tag</div>"), ctx(["TagPage"]));
     expect((tree.children[0] as { value: string }).value).toBe(
-      '<div>see <a href="../tags/my-tag" class="tag-link">my-tag</a></div>',
+      '<div>see <a href="../tags/my-tag" class="tag-link tag">my-tag</a></div>',
     );
   });
 });

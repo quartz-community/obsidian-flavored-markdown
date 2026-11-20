@@ -290,7 +290,9 @@ export function renderCallout(node: CalloutNode): void {
   if (node.collapsed === true) classNames.push("is-collapsed");
   node.data = {
     ...node.data,
-    hName: "blockquote",
+    // Obsidian renders callouts as <div class="callout">; so does Quartz, so Obsidian themes'
+    // plain `blockquote` rules don't reach callouts.
+    hName: "div",
     hProperties: {
       ...((node.data as { hProperties?: Record<string, unknown> } | undefined)?.hProperties ?? {}),
       className: classNames,
@@ -427,9 +429,9 @@ export const ObsidianFlavoredMarkdown: QuartzTransformerPlugin<
                     replacement = {
                       type: "html",
                       data: { hProperties: { transclude: true } },
-                      value: `<blockquote class="transclude" data-url="${transcludeUrl}" data-block="${block}" data-embed-alias="${alias ?? ""}"><a href="${
+                      value: `<div class="transclude internal-embed markdown-embed" data-url="${transcludeUrl}" data-block="${block}" data-embed-alias="${alias ?? ""}"><a href="${
                         transcludeUrl + block
-                      }" class="transclude-inner">Transclude of ${transcludeUrl}${block}</a></blockquote>`,
+                      }" class="transclude-inner">Transclude of ${transcludeUrl}${block}</a></div>`,
                     };
                   }
                 } else if (fp.match(externalLinkRegex)) {
@@ -511,7 +513,7 @@ export const ObsidianFlavoredMarkdown: QuartzTransformerPlugin<
                   parent.children[index] = {
                     type: "text",
                     value: tag,
-                    data: { hName: "span", hProperties: { className: ["tag-link"] } },
+                    data: { hName: "span", hProperties: { className: ["tag-link", "tag"] } },
                   };
                   return SKIP;
                 }
@@ -521,7 +523,8 @@ export const ObsidianFlavoredMarkdown: QuartzTransformerPlugin<
                   url: base + `/tags/${tag}`,
                   data: {
                     hProperties: {
-                      className: ["tag-link"],
+                      // `tag` is Obsidian's class, so Obsidian themes style tags.
+                      className: ["tag-link", "tag"],
                     },
                   },
                   children: [{ type: "text", value: tag }],
@@ -575,8 +578,8 @@ export const ObsidianFlavoredMarkdown: QuartzTransformerPlugin<
                     if (/^[\d/]+$/.test(tag)) return `#${tag}`;
                     const slug = slugTag(tag);
                     if (!hasTagPage(slug))
-                      return `<span class="tag-link">${escapeHtml(slug)}</span>`;
-                    return `<a href="${base}/tags/${slug}" class="tag-link">${slug}</a>`;
+                      return `<span class="tag-link tag">${escapeHtml(slug)}</span>`;
+                    return `<a href="${base}/tags/${slug}" class="tag-link tag">${slug}</a>`;
                   },
                 );
               }
@@ -716,27 +719,31 @@ export const ObsidianFlavoredMarkdown: QuartzTransformerPlugin<
       return plugins;
     },
     externalResources() {
+      // Default looks go in Quartz's base layer, so themes (e.g. @quartz-themes/core's
+      // `obsidian` layer) can override them; within the layer they still beat Quartz's
+      // base rules by specificity.
+      const baseLayer = (style: string) => `@layer quartz-base {\n${style}\n}`;
       const js: JSResource[] = [];
       const css: CSSResource[] = [];
       const assets: StaticAsset[] = [];
 
       if (opts.wikilinks) {
         css.push({
-          content: embedsStyle,
+          content: baseLayer(embedsStyle),
           inline: true,
         });
       }
 
       if (opts.highlight) {
         css.push({
-          content: highlightsStyle,
+          content: baseLayer(highlightsStyle),
           inline: true,
         });
       }
 
       if (opts.parseTags) {
         css.push({
-          content: tagsStyle,
+          content: baseLayer(tagsStyle),
           inline: true,
         });
       }
