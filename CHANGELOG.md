@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.3.0
+
+### Minor Changes
+
+- 32a9cf0: Render callouts and transclusions as `<div>` (as Obsidian does) and add Obsidian's classes (`tag` on tags, `internal-embed markdown-embed` on transclusions) so Obsidian themes apply. Default highlight/tag/embed styles move to the `quartz-base` layer so themes can override them.
+
 ## 2.2.0
 
 ### Minor Changes
