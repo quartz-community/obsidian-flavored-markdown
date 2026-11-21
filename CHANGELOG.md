@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.3.1
+
+### Patch Changes
+
+- 92bfede: A callout's title text sits in `.callout-title-inner` itself, as in Obsidian, instead of in a `<p>` inside it. Obsidian themes (`@quartz-themes/core`) gave that paragraph its margins, which pushed the title a line below its icon. Quartz 5.2 styles `.callout-title-inner` directly, so callouts look the same without a theme.
+
 ## 2.3.0
 
 ### Minor Changes
