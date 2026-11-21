@@ -2,6 +2,7 @@
 // Quartz's base styles: keep wide SVGs inside the article and preserve their aspect ratio.
 article object[type="image/svg+xml"] {
   max-width: 100%;
+  color-scheme: normal;
 
   &[height="auto"] {
     height: auto;
