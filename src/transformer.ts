@@ -4,7 +4,6 @@ import type {
   BlockContent,
   PhrasingContent,
   DefinitionContent,
-  Paragraph,
   Code,
   Parent,
   Literal,
@@ -12,6 +11,7 @@ import type {
   Link,
 } from "mdast";
 import type { Node } from "unist";
+import type { Element as HastElement } from "hast";
 import type { PluggableList } from "unified";
 import type {
   BuildCtx,
@@ -241,9 +241,10 @@ type CalloutNode = Parent & {
   collapsed: boolean | null;
 };
 
-const mdastToHtml = (ast: PhrasingContent | Paragraph) => {
-  const hast = toHast(ast, { allowDangerousHtml: true })!;
-  return toHtml(hast, { allowDangerousHtml: true });
+/** Inline content as HTML, without the paragraph it would otherwise be wrapped in. */
+const mdastInlineToHtml = (children: PhrasingContent[]) => {
+  const hast = toHast({ type: "paragraph", children }, { allowDangerousHtml: true }) as HastElement;
+  return toHtml({ type: "root", children: hast.children }, { allowDangerousHtml: true });
 };
 
 /** Give a remark-obsidian `callout` node Quartz's callout markup (title bar + content wrapper). */
@@ -260,14 +261,13 @@ export function renderCallout(node: CalloutNode): void {
   const body = (hasTitleNode ? rest : node.children) as (BlockContent | DefinitionContent)[];
 
   // No title at all shows the type, as Obsidian does; an explicitly empty one (`&#x20;`) stays
-  // empty.
-  const title = mdastToHtml({
-    type: "paragraph",
-    children:
-      titleChildren.length > 0
-        ? titleChildren
-        : [{ type: "text", value: capitalize(typeString).replace(/-/g, " ") }],
-  });
+  // empty. The title's inline content goes straight into `.callout-title-inner`, without a <p>,
+  // as in Obsidian: themes style that element, and a <p> brings paragraph margins with it.
+  const title = mdastInlineToHtml(
+    titleChildren.length > 0
+      ? titleChildren
+      : [{ type: "text", value: capitalize(typeString).replace(/-/g, " ") }],
+  );
 
   const children: (BlockContent | DefinitionContent | Html)[] = [
     {
