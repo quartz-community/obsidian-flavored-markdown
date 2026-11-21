@@ -34,7 +34,7 @@ describe("callouts (remark-obsidian callout nodes → Quartz markup)", () => {
     const html = await render("> [!tip] Read this\n> Body text\n");
     expect(html).toContain('<div class="callout tip" data-callout="tip">');
     expect(html).toContain(
-      '<div class="callout-title"><div class="callout-icon"></div><div class="callout-title-inner"><p>Read this</p></div></div>',
+      '<div class="callout-title"><div class="callout-icon"></div><div class="callout-title-inner">Read this</div></div>',
     );
     expect(html).toMatch(/<div class="callout-content">\s*<p>Body text<\/p>\s*<\/div>/);
   });
@@ -42,7 +42,7 @@ describe("callouts (remark-obsidian callout nodes → Quartz markup)", () => {
   it("uses the type as title when there is none, and maps aliases", async () => {
     const html = await render("> [!hint]\n> body\n");
     expect(html).toContain('class="callout tip" data-callout="tip"');
-    expect(html).toContain("<p>Hint</p>");
+    expect(html).toContain('<div class="callout-title-inner">Hint</div>');
   });
 
   it("keeps custom types, metadata and fold state", async () => {
@@ -58,8 +58,17 @@ describe("callouts (remark-obsidian callout nodes → Quartz markup)", () => {
 
   it("renders inline Markdown in titles and nested callouts", async () => {
     const html = await render("> [!info] A **bold** title\n> > [!warning] Inner\n> > inner body\n");
-    expect(html).toContain("<p>A <strong>bold</strong> title</p>");
+    expect(html).toContain('<div class="callout-title-inner">A <strong>bold</strong> title</div>');
     expect(html).toContain('<div class="callout warning" data-callout="warning">');
+  });
+
+  // As in Obsidian: the title's inline content sits in .callout-title-inner itself. A <p> there
+  // took paragraph margins from Obsidian themes and pushed the title below its icon.
+  it("puts the title in .callout-title-inner without a paragraph", async () => {
+    const titled = await render("> [!note] Title with [[link]] and `code`\n> body\n");
+    expect(titled).not.toMatch(/callout-title-inner"><p>/);
+    const untitled = await render("> [!note]\n> body\n");
+    expect(untitled).toContain('<div class="callout-title-inner">Note</div>');
   });
 
   it("a title-only callout has no content wrapper", async () => {
