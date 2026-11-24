@@ -136,6 +136,14 @@ describe("transclusion URL handling", () => {
     expect(result.value).not.toContain('data-url="note.md"');
   });
 
+  it("gives note embeds Obsidian's embed classes", () => {
+    const tree = makeTree({ path: "note.md", embedded: true });
+    const result = transformTree(tree) as Html;
+    expect(result.value).toContain(
+      'class="transclude internal-embed markdown-embed inline-embed is-loaded"',
+    );
+  });
+
   it("keeps standard image embeds unchanged", () => {
     const tree = makeTree({ path: "photo.png", embedded: true });
     const result = (transformTree(tree) as Parent).children[0] as Image;

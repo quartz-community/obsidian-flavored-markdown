@@ -73,6 +73,13 @@ describe("image embeds, as in Obsidian", () => {
     );
   });
 
+  it("gives the image no size attributes unless one is given, so img:not([width]) matches", async () => {
+    expect(await render("![[pic.png]]")).toContain('<img src="pic.png" alt="pic.png"></span>');
+    expect(await render("![[pic.png|200x100]]")).toContain(
+      '<img src="pic.png" alt="pic.png" width="200" height="100"></span>',
+    );
+  });
+
   it("wraps local Markdown images, not external ones", async () => {
     expect(await render("![A gradient](attachments/pic.png)")).toContain(
       `${span('src="attachments/pic.png" alt="A gradient"')}<img src="attachments/pic.png" alt="A gradient"></span>`,

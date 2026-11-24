@@ -387,16 +387,18 @@ export const ObsidianFlavoredMarkdown: QuartzTransformerPlugin<
                     // only a size (`![[pic.png]]` and `![[pic.png|100]]` → alt "pic.png"), which
                     // also names a missing file (“missing%20file.png”, not percent-decoded)
                     const alt = match?.groups?.alt || fp;
-                    const width = match?.groups?.width ?? "auto";
-                    const height = match?.groups?.height ?? "auto";
+                    // No size attributes unless one is given, as in Obsidian: themes'
+                    // `img:not([width])` rules must still match
+                    const width = match?.groups?.width;
+                    const height = match?.groups?.height;
                     const imageNode: Image = {
                       type: "image",
                       url,
                       alt: "",
                       data: {
                         hProperties: {
-                          width,
-                          height,
+                          ...(width ? { width } : {}),
+                          ...(height ? { height } : {}),
                           alt,
                         },
                       },
@@ -458,7 +460,7 @@ export const ObsidianFlavoredMarkdown: QuartzTransformerPlugin<
                     replacement = {
                       type: "html",
                       data: { hProperties: { transclude: true } },
-                      value: `<div class="transclude internal-embed markdown-embed" data-url="${transcludeUrl}" data-block="${block}" data-embed-alias="${alias ?? ""}"><a href="${
+                      value: `<div class="transclude internal-embed markdown-embed inline-embed is-loaded" data-url="${transcludeUrl}" data-block="${block}" data-embed-alias="${alias ?? ""}"><a href="${
                         transcludeUrl + block
                       }" class="transclude-inner">Transclude of ${transcludeUrl}${block}</a></div>`,
                     };
