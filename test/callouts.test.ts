@@ -50,10 +50,12 @@ describe("callouts (remark-obsidian callout nodes → Quartz markup)", () => {
     expect(folded).toContain(
       '<div class="callout my-type is-collapsible is-collapsed" data-callout="my-type" data-callout-fold data-callout-metadata="wide">',
     );
-    expect(folded).toContain('<div class="fold-callout-icon callout-fold"></div>');
+    // As in Obsidian, the fold indicator is marked collapsed too.
+    expect(folded).toContain('<div class="fold-callout-icon callout-fold is-collapsed"></div>');
     const open = await render("> [!note]+ Open\n> body\n");
     expect(open).toContain('class="callout note is-collapsible"');
     expect(open).not.toContain("is-collapsed");
+    expect(open).toContain('<div class="fold-callout-icon callout-fold"></div>');
   });
 
   it("renders inline Markdown in titles and nested callouts", async () => {

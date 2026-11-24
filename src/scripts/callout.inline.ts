@@ -1,9 +1,10 @@
 function toggleCallout(this: HTMLElement) {
   const outerBlock = this.parentElement!;
-  outerBlock.classList.toggle("is-collapsed");
+  const collapsed = outerBlock.classList.toggle("is-collapsed");
+  // Obsidian marks the fold indicator too (themes rotate it).
+  outerBlock.querySelector(".callout-fold")?.classList.toggle("is-collapsed", collapsed);
   const content = outerBlock.getElementsByClassName("callout-content")[0] as HTMLElement;
   if (!content) return;
-  const collapsed = outerBlock.classList.contains("is-collapsed");
   content.style.gridTemplateRows = collapsed ? "0fr" : "1fr";
 }
 

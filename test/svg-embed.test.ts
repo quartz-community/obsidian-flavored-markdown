@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import type { Root, Paragraph, Image, Html } from "mdast";
+import type { Root, Paragraph, Parent, Image, Html } from "mdast";
 import type { Node } from "unist";
 
 vi.mock("../src/scripts/callout.inline", () => ({ default: "" }));
@@ -132,18 +132,19 @@ describe("SVG embed handling", () => {
 
 describe("raster image embed handling", () => {
   it.each([".jxl", ".png", ".jpg", ".jpeg", ".gif", ".bmp", ".webp"])(
-    "renders %s embeds as image nodes",
+    "renders %s embeds as image nodes, in Obsidian's image-embed span",
     (ext) => {
       const tree = makeTree({ path: `photo${ext}`, embedded: true });
-      const result = transformTree(tree) as Image;
+      const result = transformTree(tree) as Parent;
 
-      expect(result.type).toBe("image");
+      expect(result.data?.hName).toBe("span");
+      expect(result.children[0]!.type).toBe("image");
     },
   );
 
   it("does not render raster images as <object> tags", () => {
     const tree = makeTree({ path: "photo.png", embedded: true });
-    const result = transformTree(tree) as Image;
+    const result = (transformTree(tree) as Parent).children[0] as Image;
 
     expect(result.type).toBe("image");
     expect((result as unknown as Html).value).toBeUndefined();
