@@ -77,6 +77,36 @@ export function tagPageChecker(
   return (tag) => slugs.has(`tags/${tag}`) || slugs.has(`tags/${tag}/index`);
 }
 
+/**
+ * Whether an embedded attachment (`![[file.pdf]]`) is in the content, by the path as written:
+ * some file's path ends with it, as Obsidian finds `sample.pdf` in any folder. Without the
+ * build's slugs (older Quartz, tests) every attachment is there, as before.
+ */
+export function attachmentChecker(
+  ctx: Partial<Pick<BuildCtx, "allSlugs">> | undefined,
+): (url: string) => boolean {
+  const slugs = ctx?.allSlugs ?? [];
+  if (!slugs.length) return () => true;
+  const all = new Set<string>(slugs);
+  return (url) => {
+    const target = url.replace(/^\.\//, "");
+    // Relative to the note (`../x.pdf`): not judged here.
+    if (target.startsWith("../")) return true;
+    if (all.has(target)) return true;
+    const suffix = `/${target}`;
+    for (const slug of all) if (slug.endsWith(suffix)) return true;
+    return false;
+  };
+}
+
+/** Obsidian's embed of a missing attachment: `“sample.pdf” could not be found.` */
+function missingAttachment(fp: string, alt: string): Html {
+  return {
+    type: "html",
+    value: `<span class="internal-embed is-loaded file-embed mod-empty-attachment" src="${escapeAttribute(fp)}" alt="${escapeAttribute(alt)}">“${escapeHtml(fp)}” could not be found.</span>`,
+  };
+}
+
 function escapeHtml(text: string): string {
   return text
     .replace(/&/g, "&amp;")
@@ -342,6 +372,7 @@ export const ObsidianFlavoredMarkdown: QuartzTransformerPlugin<
     markdownPlugins(ctx) {
       const plugins: PluggableList = [];
       const hasTagPage = tagPageChecker(ctx);
+      const hasAttachment = attachmentChecker(ctx);
 
       plugins.push([
         remarkObsidian,
@@ -381,7 +412,40 @@ export const ObsidianFlavoredMarkdown: QuartzTransformerPlugin<
                 if (wikilinkNode.embedded) {
                   const ext: string = path.extname(fp).toLowerCase();
                   const url = slugifyFilePath(fp as FilePath);
-                  if (imageExtensions.includes(ext)) {
+                  const attachment = [
+                    ".jxl",
+                    ".png",
+                    ".jpg",
+                    ".jpeg",
+                    ".gif",
+                    ".bmp",
+                    ".webp",
+                    ".svg",
+                    ".mp4",
+                    ".webm",
+                    ".ogv",
+                    ".avi",
+                    ".mov",
+                    ".flv",
+                    ".wmv",
+                    ".mkv",
+                    ".mpg",
+                    ".mpeg",
+                    ".3gp",
+                    ".m4v",
+                    ".mp3",
+                    ".wav",
+                    ".m4a",
+                    ".ogg",
+                    ".oga",
+                    ".aac",
+                    ".flac",
+                    ".pdf",
+                  ].includes(ext);
+                  if (attachment && !hasAttachment(url)) {
+                    const alias_ = wikilinkImageEmbedRegex.exec(alias ?? "")?.groups?.alt;
+                    replacement = missingAttachment(fp, alias_ || fp);
+                  } else if (imageExtensions.includes(ext)) {
                     const match = wikilinkImageEmbedRegex.exec(alias ?? "");
                     // As in Obsidian: the alias, or the path as written when the alias is empty or
                     // only a size (`![[pic.png]]` and `![[pic.png|100]]` → alt "pic.png"), which
