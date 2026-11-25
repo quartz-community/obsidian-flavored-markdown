@@ -48,6 +48,9 @@ import peleStyle from "./styles/pele.inline.scss";
 import embedsStyle from "./styles/embeds.inline.scss";
 import tagsStyle from "./styles/tags.inline.scss";
 import highlightsStyle from "./styles/highlights.inline.scss";
+// @ts-expect-error -- inline script import
+import foldScript from "./scripts/fold.inline";
+import foldStyle from "./styles/fold.inline.scss";
 import { toHast } from "mdast-util-to-hast";
 import { toHtml } from "hast-util-to-html";
 import {
@@ -133,6 +136,17 @@ export interface ObsidianFlavoredMarkdownOptions {
    * (`div.el-p > p`), which Obsidian themes space blocks with. No visible change without a theme.
    */
   blockWrappers: boolean;
+  /**
+   * Fold sections at their headings, as Obsidian's "Fold heading" setting does: an arrow before
+   * each of the note's headings (shown on hover) hides everything up to the next heading of the
+   * same or a higher level. Off by default.
+   */
+  foldHeadings: boolean;
+  /**
+   * Fold list items with a sublist, as Obsidian's "Fold indent" setting does: an arrow before the
+   * item (shown on hover) hides its sublist. Off by default.
+   */
+  foldLists: boolean;
 }
 
 const defaultOptions: ObsidianFlavoredMarkdownOptions = {
@@ -152,6 +166,8 @@ const defaultOptions: ObsidianFlavoredMarkdownOptions = {
   enableCheckbox: false,
   enableObsidianUri: true,
   blockWrappers: true,
+  foldHeadings: false,
+  foldLists: false,
 };
 
 const calloutMapping = {
@@ -753,6 +769,19 @@ export const ObsidianFlavoredMarkdown: QuartzTransformerPlugin<
       if (opts.parseTags) {
         css.push({
           content: baseLayer(tagsStyle),
+          inline: true,
+        });
+      }
+
+      if (opts.foldHeadings || opts.foldLists) {
+        const fold = { headings: opts.foldHeadings, lists: opts.foldLists };
+        js.push({
+          script: `const __OFM_FOLD__ = ${JSON.stringify(fold)};\n${foldScript}`,
+          loadTime: "afterDOMReady",
+          contentType: "inline",
+        });
+        css.push({
+          content: baseLayer(foldStyle),
           inline: true,
         });
       }

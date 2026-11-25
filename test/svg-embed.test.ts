@@ -3,6 +3,7 @@ import type { Root, Paragraph, Image, Html } from "mdast";
 import type { Node } from "unist";
 
 vi.mock("../src/scripts/callout.inline", () => ({ default: "" }));
+vi.mock("../src/scripts/fold.inline", () => ({ default: "" }));
 vi.mock("../src/scripts/checkbox.inline", () => ({ default: "" }));
 vi.mock("../src/scripts/mermaid.inline", () => ({ default: "" }));
 vi.mock("../src/styles/mermaid.inline.scss", () => ({ default: "" }));

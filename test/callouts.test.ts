@@ -6,6 +6,7 @@ import { toHtml } from "hast-util-to-html";
 import type { Root } from "mdast";
 
 vi.mock("../src/scripts/callout.inline", () => ({ default: "" }));
+vi.mock("../src/scripts/fold.inline", () => ({ default: "" }));
 vi.mock("../src/scripts/checkbox.inline", () => ({ default: "" }));
 vi.mock("../src/scripts/mermaid.inline", () => ({ default: "" }));
 vi.mock("../src/styles/mermaid.inline.scss", () => ({ default: "" }));

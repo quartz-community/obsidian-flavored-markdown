@@ -1,0 +1,97 @@
+// Folding headings and lists (foldHeadings / foldLists): Obsidian's fold arrows, which
+// rehype-obsidian renders and Quartz's base styles hide, appear where the script has turned
+// folding on, with Obsidian's reading-view look and behaviour. Themes restyle them.
+.markdown-preview-view {
+  &.allow-fold-headings .heading-collapse-indicator,
+  &.allow-fold-lists .list-collapse-indicator {
+    display: inline-flex;
+  }
+
+  // not note-properties' .collapse-indicator
+  .heading-collapse-indicator,
+  .list-collapse-indicator {
+    position: absolute;
+    align-items: center;
+    cursor: pointer;
+    user-select: none;
+    opacity: 0;
+
+    // gives the arrow the line's height, so it centres on the first line
+    &::before {
+      content: "\200b";
+    }
+
+    svg {
+      width: 10px;
+      height: 10px;
+      stroke-width: 4px;
+      color: var(--gray);
+      vertical-align: middle;
+      transition: transform 0.1s ease-in-out;
+    }
+
+    &.is-collapsed {
+      opacity: 1;
+
+      svg {
+        color: var(--secondary);
+        transform: rotate(-90deg);
+      }
+
+      &:dir(rtl) svg {
+        transform: rotate(90deg);
+      }
+    }
+  }
+
+  .heading-collapse-indicator {
+    margin-inline-start: -22px;
+    padding: 0 6px;
+  }
+
+  .list-collapse-indicator {
+    margin-inline-start: -2.65em;
+    padding-inline-end: 2em;
+  }
+
+  li.is-collapsed {
+    > ul,
+    > ol {
+      display: none;
+    }
+
+    &::marker {
+      color: var(--secondary);
+    }
+  }
+
+  // the blocks under a folded heading
+  [data-fold-hidden] {
+    display: none !important;
+  }
+}
+
+@media (hover: hover) {
+  .markdown-preview-view {
+    :is(h1, h2, h3, h4, h5, h6):hover .heading-collapse-indicator,
+    .heading-collapse-indicator:hover,
+    .list-collapse-indicator:hover {
+      opacity: 1;
+    }
+  }
+}
+
+// no hover on touch screens: keep the arrows in sight
+@media (hover: none) {
+  .markdown-preview-view {
+    :is(.heading-collapse-indicator, .list-collapse-indicator) {
+      opacity: 1;
+    }
+
+    // closer to the heading, off a phone's screen edge
+    .heading-collapse-indicator {
+      margin-inline-start: -18px;
+      padding: 0 4px;
+    }
+  }
+}
