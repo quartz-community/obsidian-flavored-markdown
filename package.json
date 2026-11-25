@@ -115,7 +115,7 @@
       "enableVideoEmbed": true,
       "enableCheckbox": false,
       "enableObsidianUri": true,
-      "diagramRenderer": "mermaid"
+      "diagramRenderer": "pele"
     },
     "optionSchema": {
       "preset": {
