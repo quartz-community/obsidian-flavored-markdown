@@ -11,6 +11,8 @@
   .heading-collapse-indicator,
   .list-collapse-indicator {
     position: absolute;
+    // above Quartz's sticky left sidebar (z-index 1), whose box reaches the content column
+    z-index: 2;
     align-items: center;
     cursor: pointer;
     user-select: none;
