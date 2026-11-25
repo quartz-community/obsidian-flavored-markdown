@@ -57,7 +57,7 @@
     }
   },
   "dependencies": {
-    "@quartz-community/rehype-obsidian": "^1.5.0",
+    "@quartz-community/rehype-obsidian": "^1.4.0",
     "@quartz-community/remark-obsidian": "^2.2.1",
     "@quartz-community/types": "^1.1.0",
     "@quartz-community/utils": "^1.2.0",
