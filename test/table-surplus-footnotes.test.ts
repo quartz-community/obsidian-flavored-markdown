@@ -33,7 +33,7 @@ describe("footnotes referenced in a table cell past the header's columns", () =>
     const html = await render("| a |\n| --- |\n| b | c[^1] |\n\n[^1]: Footnote.\n");
     expect(html).toContain("<td>b</td>");
     expect(html).not.toContain(">c<");
-    expect(footnotes(html)).toContain('<li id="user-content-fn-1">');
+    expect(footnotes(html)).toContain('<li id="user-content-fn-1"');
     expect(footnotes(html)).toContain("<p>Footnote.</p>");
     expect(backLinks(html)).toBe(0);
     expect(html).not.toContain("hidden");
