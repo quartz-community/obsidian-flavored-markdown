@@ -68,11 +68,14 @@ function setupFolding() {
   }
 }
 
-// One delegated listener for the page's lifetime (SPA navigation swaps the content, not the document).
-const w = window as Window & { __ofmFoldListener?: boolean };
-if (!w.__ofmFoldListener) {
-  w.__ofmFoldListener = true;
-  document.addEventListener("click", onClick);
+// One delegated listener for the page's lifetime (SPA navigation swaps the content, not the
+// document). Guarded so that importing the module outside a browser (tests) does nothing.
+if (typeof window !== "undefined") {
+  const w = window as Window & { __ofmFoldListener?: boolean };
+  if (!w.__ofmFoldListener) {
+    w.__ofmFoldListener = true;
+    document.addEventListener("click", onClick);
+  }
+  document.addEventListener("nav", setupFolding);
+  document.addEventListener("render", setupFolding);
 }
-document.addEventListener("nav", setupFolding);
-document.addEventListener("render", setupFolding);
