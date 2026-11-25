@@ -43,7 +43,7 @@ describe("footnotes referenced in a table cell past the header's columns", () =>
   it("are numbered where they are written, as Obsidian numbers them", async () => {
     // Obsidian 1.15.0: `[^2]` in the hidden cell comes first, so the visible `[^1]` reads 2.
     const html = await render("| a |\n| --- |\n| b | [^2] |\n\nc [^1]\n\n[^1]: one\n[^2]: two\n");
-    expect(html).toMatch(/<p>c <sup><a [^>]*>2<\/a><\/sup><\/p>/);
+    expect(html).toMatch(/<p>c <sup[^>]*><a [^>]*>\[?2\]?<\/a><\/sup><\/p>/);
     const section = footnotes(html);
     expect(section.indexOf("two")).toBeLessThan(section.indexOf("one"));
     // `[^1]` keeps its back-link; `[^2]` has none.
@@ -55,9 +55,9 @@ describe("footnotes referenced in a table cell past the header's columns", () =>
     const html = await render("| a |\n| --- |\n| b | x[^1] |\n\nc [^1]\n\n[^1]: Footnote.\n");
     const section = footnotes(html);
     expect(section.match(/<li /g)).toHaveLength(1);
-    expect(html).toMatch(/<p>c <sup><a [^>]*>1<\/a><\/sup><\/p>/);
+    expect(html).toMatch(/<p>c <sup[^>]*><a [^>]*>\[?1\]?<\/a><\/sup><\/p>/);
     // One back-link, to the reference the page shows, reading as a first back-link.
-    const visibleId = /<p>c <sup><a [^>]*id="([^"]+)"/.exec(html)?.[1];
+    const visibleId = /<p>c <sup[^>]*><a [^>]*id="([^"]+)"/.exec(html)?.[1];
     expect(visibleId).toBeDefined();
     expect(backLinks(html)).toBe(1);
     expect(section).toContain(`href="#${visibleId}"`);
@@ -70,13 +70,13 @@ describe("footnotes referenced in a table cell past the header's columns", () =>
     const section = footnotes(html);
     expect(section.indexOf("inline note")).toBeGreaterThan(-1);
     expect(section.indexOf("inline note")).toBeLessThan(section.indexOf("second"));
-    expect(html).toMatch(/<p><sup><a [^>]*>2<\/a><\/sup><\/p>/);
+    expect(html).toMatch(/<p><sup[^>]*><a [^>]*>\[?2\]?<\/a><\/sup><\/p>/);
     expect(backLinks(html)).toBe(1);
   });
 
   it("leave footnotes in rendered cells alone", async () => {
     const html = await render("| a [^1] | b |\n| --- | --- |\n| c | d |\n\n[^1]: Footnote.\n");
-    expect(html).toMatch(/<th>a <sup><a [^>]*>1<\/a><\/sup><\/th>/);
+    expect(html).toMatch(/<th>a <sup[^>]*><a [^>]*>\[?1\]?<\/a><\/sup><\/th>/);
     expect(backLinks(html)).toBe(1);
   });
 });

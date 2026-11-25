@@ -31,24 +31,25 @@ This plugin must run after [github-flavored-markdown](https://github.com/quartz-
 
 ## Configuration
 
-| Option                 | Type                     | Default     | Description                                                                                                                                          |
-| ---------------------- | ------------------------ | ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `preset`               | `"legacy"` \| `"strict"` | `"legacy"`  | `legacy`: parse exactly as Obsidian. `strict`: CommonMark/GFM + Obsidian syntax, keeps other plugins' syntax extensions (TOML frontmatter).          |
-| `strictLineBreaks`     | `boolean`                | by preset   | Obsidian's "Strict line breaks": `false` (default under `legacy`) renders a single line break as `<br>`; `true` (default under `strict`) as a space. |
-| `comments`             | `boolean`                | `true`      | Whether to parse Obsidian-style comments.                                                                                                            |
-| `highlight`            | `boolean`                | `true`      | Whether to parse Obsidian-style highlights.                                                                                                          |
-| `wikilinks`            | `boolean`                | `true`      | Whether to parse wikilinks.                                                                                                                          |
-| `callouts`             | `boolean`                | `true`      | Whether to parse callouts.                                                                                                                           |
-| `mermaid`              | `boolean`                | `true`      | Whether to parse Mermaid diagram fences.                                                                                                             |
-| `diagramRenderer`      | `"mermaid"` \| `"pele"`  | `"mermaid"` | Renderer for Mermaid fences. Default Mermaid.js; Pele is opt-in (Mermaid.js deprecated).                                                             |
-| `parseTags`            | `boolean`                | `true`      | Whether to parse tags.                                                                                                                               |
-| `parseBlockReferences` | `boolean`                | `true`      | Whether to parse block references.                                                                                                                   |
-| `enableInHtmlEmbed`    | `boolean`                | `false`     | Whether to enable parsing in HTML embeds.                                                                                                            |
-| `enableYouTubeEmbed`   | `boolean`                | `true`      | Whether to enable YouTube embeds.                                                                                                                    |
-| `enableTweetEmbed`     | `boolean`                | `true`      | Whether to embed tweets (Twitter/X URLs) as static blockquotes.                                                                                      |
-| `enableVideoEmbed`     | `boolean`                | `true`      | Whether to enable video embeds.                                                                                                                      |
-| `enableCheckbox`       | `boolean`                | `false`     | Whether to enable interactive checkboxes, incl. custom task characters (`- [?]`). The default `quartz.config.yaml` turns it on.                      |
-| `enableObsidianUri`    | `boolean`                | `true`      | Whether to mark `obsidian://` links with a CSS class and data attribute.                                                                             |
+| Option                 | Type                     | Default     | Description                                                                                                                                                       |
+| ---------------------- | ------------------------ | ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `preset`               | `"legacy"` \| `"strict"` | `"legacy"`  | `legacy`: parse exactly as Obsidian. `strict`: CommonMark/GFM + Obsidian syntax, keeps other plugins' syntax extensions (TOML frontmatter).                       |
+| `strictLineBreaks`     | `boolean`                | by preset   | Obsidian's "Strict line breaks": `false` (default under `legacy`) renders a single line break as `<br>`; `true` (default under `strict`) as a space.              |
+| `comments`             | `boolean`                | `true`      | Whether to parse Obsidian-style comments.                                                                                                                         |
+| `highlight`            | `boolean`                | `true`      | Whether to parse Obsidian-style highlights.                                                                                                                       |
+| `wikilinks`            | `boolean`                | `true`      | Whether to parse wikilinks.                                                                                                                                       |
+| `callouts`             | `boolean`                | `true`      | Whether to parse callouts.                                                                                                                                        |
+| `mermaid`              | `boolean`                | `true`      | Whether to parse Mermaid diagram fences.                                                                                                                          |
+| `diagramRenderer`      | `"mermaid"` \| `"pele"`  | `"mermaid"` | Renderer for Mermaid fences. Default Mermaid.js; Pele is opt-in (Mermaid.js deprecated).                                                                          |
+| `parseTags`            | `boolean`                | `true`      | Whether to parse tags.                                                                                                                                            |
+| `parseBlockReferences` | `boolean`                | `true`      | Whether to parse block references.                                                                                                                                |
+| `enableInHtmlEmbed`    | `boolean`                | `false`     | Whether to enable parsing in HTML embeds.                                                                                                                         |
+| `enableYouTubeEmbed`   | `boolean`                | `true`      | Whether to enable YouTube embeds.                                                                                                                                 |
+| `enableTweetEmbed`     | `boolean`                | `true`      | Whether to embed tweets (Twitter/X URLs) as static blockquotes.                                                                                                   |
+| `enableVideoEmbed`     | `boolean`                | `true`      | Whether to enable video embeds.                                                                                                                                   |
+| `enableCheckbox`       | `boolean`                | `false`     | Whether to enable interactive checkboxes, incl. custom task characters (`- [?]`). The default `quartz.config.yaml` turns it on.                                   |
+| `enableObsidianUri`    | `boolean`                | `true`      | Whether to mark `obsidian://` links with a CSS class and data attribute.                                                                                          |
+| `blockWrappers`        | `boolean`                | `true`      | Whether to wrap each top-level block in the div Obsidian puts it in (`div.el-p > p`), which Obsidian themes space blocks with. No visible change without a theme. |
 
 `disableBrokenWikilinks` is no longer an option of this plugin: it is part of Quartz's built-in link processing, as `configuration.links.disableBrokenWikilinks`.
 
