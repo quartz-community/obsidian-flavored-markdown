@@ -137,6 +137,39 @@ describe("Markdown-link embeds", () => {
     expect(html).toContain('src="https://example.com/note.md"');
   });
 
+  it("ignore a query when looking up the note", async () => {
+    const ctx = { allSlugs: ["sub/target", "other"] };
+    const html = await render(
+      ["![](sub/target.md?x=1)", "![](sub/target.md?x=1#Section)", "![](other?v=2)"].join("\n\n"),
+      { ctx },
+    );
+    expect(transclusions(html)).toEqual([
+      ["sub/target", "", ""],
+      ["sub/target", "#section", ""],
+      ["other", "", ""],
+    ]);
+    expect(html).not.toContain("<img");
+  });
+
+  it("embed reference-style links through their definition", async () => {
+    const ctx = { allSlugs: ["sub/target", "other"] };
+    const html = await render(
+      [
+        "![ref][r] ![][R] ![other] ![pic][p] ![none][missing]",
+        "[r]: sub/target.md#Section",
+        "[other]: other",
+        "[p]: pic.png",
+      ].join("\n\n"),
+      { ctx },
+    );
+    expect(transclusions(html)).toEqual([
+      ["sub/target", "#section", "ref"],
+      ["sub/target", "#section", ""],
+      ["other", "", "other"],
+    ]);
+    expect(html).toContain('<img src="pic.png" alt="pic">');
+  });
+
   it("can be turned off", async () => {
     const html = await render("![](other.md)", { opts: { markdownEmbeds: false } });
     expect(transclusions(html)).toEqual([]);

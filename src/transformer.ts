@@ -8,6 +8,8 @@ import type {
   Parent,
   Literal,
   Image,
+  ImageReference,
+  Definition,
   Link,
 } from "mdast";
 import type { Node } from "unist";
@@ -57,6 +59,7 @@ import {
   hoistSurplusCellFootnotes,
   removeSurplusFootnoteReferences,
 } from "./util/surplus-footnotes";
+import { withoutMathSyntax } from "./util/math-syntax";
 import { removeWikilinkMarkers, wikilinkData, WIKILINK_ATTRIBUTE } from "./util/wikilink-marker";
 
 export type DiagramRenderer = "mermaid" | "pele";
@@ -151,7 +154,8 @@ export interface ObsidianFlavoredMarkdownOptions {
   highlight: boolean;
   /**
    * Parse `$inline$` and `$$display$$` math, as Obsidian does. Off, dollar signs are text
-   * (`cost of $2-$3`), for sites without math.
+   * (`cost of $2-$3`), for sites without math -- under either preset, also while the LaTeX
+   * plugin is enabled (which then has no math to render).
    */
   math: boolean;
   wikilinks: boolean;
@@ -503,6 +507,8 @@ export const ObsidianFlavoredMarkdown: QuartzTransformerPlugin<
           positionedBreaks: !(opts.strictLineBreaks ?? opts.preset === "strict"),
         },
       ]);
+      // Under `strict`, other plugins' math syntax (the LaTeX plugin's) must not parse either.
+      if (!opts.math && opts.preset === "strict") plugins.push(withoutMathSyntax);
 
       plugins.push(() => {
         return (tree: Root, file) => {
@@ -512,13 +518,34 @@ export const ObsidianFlavoredMarkdown: QuartzTransformerPlugin<
             // `![alt](note.md#heading)`: Obsidian embeds a note, canvas or base written as a
             // Markdown link just as it embeds `![[note#heading|alt]]`, and reads a link
             // without an extension (`![](note)`) as a note.
-            visit(tree, "image", (node: Image, index, parent) => {
+            // Reference-style embeds (`![alt][ref]` with `[ref]: note.md`) resolve through
+            // their definition, as in Obsidian.
+            const definitions = new Map<string, string>();
+            visit(tree, "definition", (node: Definition) => {
+              const id = node.identifier.toLowerCase();
+              if (!definitions.has(id)) definitions.set(id, node.url);
+            });
+            visit(tree, (node, index, parent) => {
               if (!parent || index === undefined) return;
-              const url = node.url ?? "";
+              let url: string;
+              let altText: string | null | undefined;
+              if (node.type === "image") {
+                url = (node as Image).url ?? "";
+                altText = (node as Image).alt;
+              } else if (node.type === "imageReference") {
+                const ref = node as ImageReference;
+                const definition = definitions.get(ref.identifier.toLowerCase());
+                if (definition === undefined) return;
+                url = definition;
+                altText = ref.alt;
+              } else return;
               if (url === "" || url.startsWith("#")) return;
               if (/^(?:[a-z][a-z\d+.-]*:|\/\/)/i.test(url)) return;
               const hash = url.indexOf("#");
-              const target = safeDecode(hash === -1 ? url : url.slice(0, hash));
+              const location = hash === -1 ? url : url.slice(0, hash);
+              // A query (`note.md?x=1`) names no file: Obsidian forbids `?` in file names.
+              const query = location.indexOf("?");
+              const target = safeDecode(query === -1 ? location : location.slice(0, query));
               const anchor = hash === -1 ? "" : safeDecode(url.slice(hash + 1)).trim();
               if (target === "" || target.endsWith("/")) return;
               const ext = path.extname(target).toLowerCase();
@@ -532,7 +559,7 @@ export const ObsidianFlavoredMarkdown: QuartzTransformerPlugin<
                 ext === ".base"
                   ? baseEmbedPath(target, file.data.relativePath, ctx?.allFiles)
                   : target.replace(/^\//, "");
-              const alias = node.alt?.trim() || undefined;
+              const alias = altText?.trim() || undefined;
               parent.children.splice(index, 1, transclusion(fp, anchor, alias) as never);
               return SKIP;
             });
