@@ -1,5 +1,18 @@
 # Changelog
 
+## 2.4.0
+
+### Minor Changes
+
+- 5b8cc72: New `blockWrappers` option (default `true`): each of a note's top-level blocks is wrapped in the div Obsidian's reading view puts it in (`div.el-p > p`, `div.el-h2 > h2`), through `@quartz-community/rehype-obsidian`. Obsidian themes space blocks with these wrappers; without a theme nothing changes visibly. The setting is shared as `globalThis.__quartzBlockWrappers`, which `@quartz-themes/core` checks. Tests of footnote markup accept rehype-obsidian's Obsidian footnote labels (`[1]`).
+- b1a09d9: `foldHeadings` and `foldLists` options (both off by default): fold sections at their headings and list items with a sublist, as Obsidian's reading view does with "Fold heading" and "Fold indent". An arrow before the heading or item, shown on hover (always on touch screens), folds it; Obsidian themes style the arrows as in the app. Uses the fold arrows of `@quartz-community/rehype-obsidian`'s `collapseIndicators`.
+- 1d9e54a: An embed of an attachment that isn't in the content (`![[missing.pdf]]`, an image, audio, video or SVG) is Obsidian's `span.internal-embed.file-embed.mod-empty-attachment` reading `“missing.pdf” could not be found.`, instead of an empty frame or a broken image. A file counts as there when some file's path ends with the path as written, as Obsidian finds `sample.pdf` in any folder.
+- 3b56797: Mermaid diagrams are rendered with Pele by default (`diagramRenderer: pele`), as in Obsidian 1.15, and with Obsidian's markup: a `<div class="mermaid">` holding Pele's SVG, not a code block, so Obsidian themes' diagram styles apply and their code block styles don't. The expand button and popup sit next to it in a `div.mermaid-diagram`. Set `diagramRenderer: mermaid` for Mermaid.js, which is deprecated. The diagram styles are in Quartz's base layer, so themes can override them.
+
+### Patch Changes
+
+- 3b56797: Image embeds (`![[pic.png]]`, and local Markdown images) are wrapped in Obsidian's `<span class="internal-embed media-embed image-embed is-loaded">`, which carries the link as written, the alt text and any size, so Obsidian themes' image rules (rounded corners, dimmed images in dark mode, centring) apply. As in Obsidian, the image itself has no `width`/`height` unless a size is given (it had `width="auto"`, so themes' `img:not([width])` rules didn't apply), and external images stay bare. Note embeds get Obsidian's `inline-embed is-loaded` classes. A folded callout's fold indicator is marked `is-collapsed` too, as in Obsidian.
+
 ## 2.3.1
 
 ### Patch Changes
