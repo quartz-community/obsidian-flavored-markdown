@@ -1,5 +1,13 @@
 # Changelog
 
+## 2.5.2
+
+### Patch Changes
+
+- 28d0046: - Bundles `@quartz-community/rehype-obsidian` 1.5.1, `@quartz-community/remark-obsidian` 2.2.4 and `@quartz-community/utils` 1.3.1, so their fixes reach sites: same-page block links (`[[#^id]]`), the YouTube embed host check, the legacy parser's memory use, Latin-only diacritic stripping in slugs, and (under `preset: strict`) earlier plugins' text rewrites such as GitHub Flavored Markdown's SmartyPants and `replacements` surviving in notes with callouts.
+  - `math: false` keeps dollar signs text under `preset: strict` too, also when the LaTeX plugin is enabled (its `remark-math` syntax no longer parses maths there).
+  - Markdown-link embeds: a query is ignored when looking up the note (`![](note.md?x=1)` was a broken image), and reference-style embeds (`![alt][ref]` with `[ref]: note.md`) are transcluded.
+
 ## 2.5.1
 
 ### Patch Changes
