@@ -78,7 +78,8 @@ async function renderPeleDiagrams() {
   // `.center` is rendered by the Quartz page frame; fall back to the whole document so custom
   // frames/page types without it still get their diagrams rendered.
   const root: Element | Document = document.querySelector(".center") ?? document;
-  const nodes = [...root.querySelectorAll<HTMLElement>("code.mermaid")];
+  // `div.mermaid`, as in Obsidian; `code.mermaid` from sites built before Pele's markup.
+  const nodes = [...root.querySelectorAll<HTMLElement>("div.mermaid, code.mermaid")];
   if (nodes.length === 0) return; // no diagrams → Pele is never downloaded
 
   await Promise.all(

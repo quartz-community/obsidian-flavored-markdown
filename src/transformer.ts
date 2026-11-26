@@ -77,6 +77,36 @@ export function tagPageChecker(
   return (tag) => slugs.has(`tags/${tag}`) || slugs.has(`tags/${tag}/index`);
 }
 
+/**
+ * Whether an embedded attachment (`![[file.pdf]]`) is in the content, by the path as written:
+ * some file's path ends with it, as Obsidian finds `sample.pdf` in any folder. Without the
+ * build's slugs (older Quartz, tests) every attachment is there, as before.
+ */
+export function attachmentChecker(
+  ctx: Partial<Pick<BuildCtx, "allSlugs">> | undefined,
+): (url: string) => boolean {
+  const slugs = ctx?.allSlugs ?? [];
+  if (!slugs.length) return () => true;
+  const all = new Set<string>(slugs);
+  return (url) => {
+    const target = url.replace(/^\.\//, "");
+    // Relative to the note (`../x.pdf`): not judged here.
+    if (target.startsWith("../")) return true;
+    if (all.has(target)) return true;
+    const suffix = `/${target}`;
+    for (const slug of all) if (slug.endsWith(suffix)) return true;
+    return false;
+  };
+}
+
+/** Obsidian's embed of a missing attachment: `“sample.pdf” could not be found.` */
+function missingAttachment(fp: string, alt: string): Html {
+  return {
+    type: "html",
+    value: `<span class="internal-embed is-loaded file-embed mod-empty-attachment" src="${escapeAttribute(fp)}" alt="${escapeAttribute(alt)}">“${escapeHtml(fp)}” could not be found.</span>`,
+  };
+}
+
 function escapeHtml(text: string): string {
   return text
     .replace(/&/g, "&amp;")
@@ -142,7 +172,7 @@ const defaultOptions: ObsidianFlavoredMarkdownOptions = {
   wikilinks: true,
   callouts: true,
   mermaid: true,
-  diagramRenderer: "mermaid",
+  diagramRenderer: "pele",
   parseTags: true,
   parseBlockReferences: true,
   enableInHtmlEmbed: false,
@@ -212,6 +242,35 @@ const wikilinkImageEmbedRegex = new RegExp(
 // Obsidian's size suffix on Markdown images: `![alt|300](url)`, `![alt|100x145](url)`.
 const markdownImageSizeRegex = /^(?<alt>.*?)\|\s*(?<width>\d+)(?:x(?<height>\d+))?\s*$/;
 
+const imageExtensions = [".jxl", ".png", ".jpg", ".jpeg", ".gif", ".bmp", ".webp"];
+
+/**
+ * Obsidian's image embed: the image in `<span class="internal-embed media-embed image-embed
+ * is-loaded">`, which carries the link as written (`src`), the alt text and any size, so
+ * Obsidian themes' image rules apply.
+ */
+function imageEmbed(image: Image, src: string): PhrasingContent {
+  const { alt, width, height } = (image.data?.hProperties ?? {}) as Record<
+    string,
+    string | number | undefined
+  >;
+  const given = (v: string | number | undefined) => v !== undefined && v !== "auto";
+  return {
+    type: "emphasis",
+    data: {
+      hName: "span",
+      hProperties: {
+        className: ["internal-embed", "media-embed", "image-embed", "is-loaded"],
+        src,
+        alt: String(alt ?? image.alt ?? ""),
+        ...(given(width) ? { width } : {}),
+        ...(given(height) ? { height } : {}),
+      },
+    },
+    children: [image],
+  };
+}
+
 /** Escapes a value for a double-quoted HTML attribute. */
 function escapeAttribute(value: string): string {
   return value
@@ -278,7 +337,7 @@ export function renderCallout(node: CalloutNode): void {
   const children: (BlockContent | DefinitionContent | Html)[] = [
     {
       type: "html",
-      value: `<div class="callout-title"><div class="callout-icon"></div><div class="callout-title-inner">${title}</div>${collapse ? `<div class="fold-callout-icon callout-fold"></div>` : ""}</div>`,
+      value: `<div class="callout-title"><div class="callout-icon"></div><div class="callout-title-inner">${title}</div>${collapse ? `<div class="fold-callout-icon callout-fold${node.collapsed === true ? " is-collapsed" : ""}"></div>` : ""}</div>`,
     },
   ];
   // The body is wrapped in a `callout-content` div for the grid-based collapse animation.
@@ -321,6 +380,7 @@ export const ObsidianFlavoredMarkdown: QuartzTransformerPlugin<
     markdownPlugins(ctx) {
       const plugins: PluggableList = [];
       const hasTagPage = tagPageChecker(ctx);
+      const hasAttachment = attachmentChecker(ctx);
 
       plugins.push([
         remarkObsidian,
@@ -360,27 +420,62 @@ export const ObsidianFlavoredMarkdown: QuartzTransformerPlugin<
                 if (wikilinkNode.embedded) {
                   const ext: string = path.extname(fp).toLowerCase();
                   const url = slugifyFilePath(fp as FilePath);
-                  if ([".jxl", ".png", ".jpg", ".jpeg", ".gif", ".bmp", ".webp"].includes(ext)) {
+                  const attachment = [
+                    ".jxl",
+                    ".png",
+                    ".jpg",
+                    ".jpeg",
+                    ".gif",
+                    ".bmp",
+                    ".webp",
+                    ".svg",
+                    ".mp4",
+                    ".webm",
+                    ".ogv",
+                    ".avi",
+                    ".mov",
+                    ".flv",
+                    ".wmv",
+                    ".mkv",
+                    ".mpg",
+                    ".mpeg",
+                    ".3gp",
+                    ".m4v",
+                    ".mp3",
+                    ".wav",
+                    ".m4a",
+                    ".ogg",
+                    ".oga",
+                    ".aac",
+                    ".flac",
+                    ".pdf",
+                  ].includes(ext);
+                  if (attachment && !hasAttachment(url)) {
+                    const alias_ = wikilinkImageEmbedRegex.exec(alias ?? "")?.groups?.alt;
+                    replacement = missingAttachment(fp, alias_ || fp);
+                  } else if (imageExtensions.includes(ext)) {
                     const match = wikilinkImageEmbedRegex.exec(alias ?? "");
                     // As in Obsidian: the alias, or the path as written when the alias is empty or
                     // only a size (`![[pic.png]]` and `![[pic.png|100]]` → alt "pic.png"), which
                     // also names a missing file (“missing%20file.png”, not percent-decoded)
                     const alt = match?.groups?.alt || fp;
-                    const width = match?.groups?.width ?? "auto";
-                    const height = match?.groups?.height ?? "auto";
+                    // No size attributes unless one is given, as in Obsidian: themes'
+                    // `img:not([width])` rules must still match
+                    const width = match?.groups?.width;
+                    const height = match?.groups?.height;
                     const imageNode: Image = {
                       type: "image",
                       url,
                       alt: "",
                       data: {
                         hProperties: {
-                          width,
-                          height,
+                          ...(width ? { width } : {}),
+                          ...(height ? { height } : {}),
                           alt,
                         },
                       },
                     };
-                    replacement = imageNode;
+                    replacement = imageEmbed(imageNode, fp);
                   } else if (ext === ".svg") {
                     const match = wikilinkImageEmbedRegex.exec(alias ?? "");
                     const alt = match?.groups?.alt ?? "";
@@ -437,7 +532,7 @@ export const ObsidianFlavoredMarkdown: QuartzTransformerPlugin<
                     replacement = {
                       type: "html",
                       data: { hProperties: { transclude: true } },
-                      value: `<div class="transclude internal-embed markdown-embed" data-url="${transcludeUrl}" data-block="${block}" data-embed-alias="${alias ?? ""}"><a href="${
+                      value: `<div class="transclude internal-embed markdown-embed inline-embed is-loaded" data-url="${transcludeUrl}" data-block="${block}" data-embed-alias="${alias ?? ""}"><a href="${
                         transcludeUrl + block
                       }" class="transclude-inner">Transclude of ${transcludeUrl}${block}</a></div>`,
                     };
@@ -615,6 +710,24 @@ export const ObsidianFlavoredMarkdown: QuartzTransformerPlugin<
         };
       });
 
+      // Local Markdown images (`![alt](pic.png)`) are image embeds in Obsidian too; external
+      // ones (`https://…`) stay bare images.
+      plugins.push(() => {
+        return (tree: Root) => {
+          visit(tree, "image", (node, index, parent) => {
+            if (!parent || index === undefined) return;
+            if ((parent.data as { hName?: string } | undefined)?.hName === "span") return;
+            if (/^(?:[a-z][a-z\d+.-]*:|\/\/)/i.test(node.url)) return;
+            const ext = path.extname(node.url.split(/[?#]/)[0] ?? "").toLowerCase();
+            if (!imageExtensions.includes(ext)) return;
+            node.data ??= {};
+            node.data.hProperties = { alt: node.alt ?? "", ...(node.data.hProperties ?? {}) };
+            parent.children.splice(index, 1, imageEmbed(node, node.url) as never);
+            return SKIP;
+          });
+        };
+      });
+
       if (opts.enableVideoEmbed) {
         plugins.push(() => {
           return (tree: Root, _file) => {
@@ -687,16 +800,31 @@ export const ObsidianFlavoredMarkdown: QuartzTransformerPlugin<
       if (opts.mermaid) {
         plugins.push(() => {
           return (tree: Root, file) => {
-            visit(tree, "code", (node: Code) => {
-              if (node.lang === "mermaid") {
-                file.data.hasMermaidDiagram = true;
-                node.data = {
-                  hProperties: {
-                    className: ["mermaid"],
-                    "data-clipboard": JSON.stringify(node.value),
+            visit(tree, "code", (node: Code, index, parent) => {
+              if (node.lang !== "mermaid") return;
+              file.data.hasMermaidDiagram = true;
+              if (opts.diagramRenderer === "pele" && parent && index !== undefined) {
+                // As in Obsidian, whose diagrams are Pele's too: a `<div class="mermaid">`, not
+                // a code block, so themes' code block rules don't reach it.
+                parent.children.splice(index, 1, {
+                  type: "mermaidDiagram",
+                  data: {
+                    hName: "div",
+                    hProperties: {
+                      className: ["mermaid"],
+                      "data-clipboard": JSON.stringify(node.value),
+                    },
+                    hChildren: [{ type: "text", value: node.value }],
                   },
-                };
+                } as never);
+                return SKIP;
               }
+              node.data = {
+                hProperties: {
+                  className: ["mermaid"],
+                  "data-clipboard": JSON.stringify(node.value),
+                },
+              };
             });
           };
         });
@@ -787,7 +915,7 @@ export const ObsidianFlavoredMarkdown: QuartzTransformerPlugin<
           assets.push({ from: dir, to: "obsidian-flavored-markdown/pele" });
 
           css.push({
-            content: peleStyle,
+            content: baseLayer(peleStyle),
             inline: true,
           });
         } else {
@@ -799,7 +927,7 @@ export const ObsidianFlavoredMarkdown: QuartzTransformerPlugin<
           });
 
           css.push({
-            content: mermaidStyle,
+            content: baseLayer(mermaidStyle),
             inline: true,
           });
         }

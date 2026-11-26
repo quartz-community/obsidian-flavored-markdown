@@ -116,7 +116,7 @@
       "enableCheckbox": false,
       "enableObsidianUri": true,
       "blockWrappers": true,
-      "diagramRenderer": "mermaid"
+      "diagramRenderer": "pele"
     },
     "optionSchema": {
       "preset": {
