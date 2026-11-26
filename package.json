@@ -116,6 +116,7 @@
       "enableVideoEmbed": true,
       "enableCheckbox": false,
       "enableObsidianUri": true,
+      "markdownEmbeds": true,
       "blockWrappers": true,
       "foldHeadings": false,
       "foldLists": false,
@@ -172,6 +173,9 @@
         "type": "boolean"
       },
       "enableObsidianUri": {
+        "type": "boolean"
+      },
+      "markdownEmbeds": {
         "type": "boolean"
       },
       "blockWrappers": {
