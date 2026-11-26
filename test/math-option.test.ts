@@ -9,6 +9,8 @@ vi.mock("../src/scripts/pele.inline", () => ({ default: "" }));
 vi.mock("../src/styles/pele.inline.scss", () => ({ default: "" }));
 
 import type { Root } from "mdast";
+import remarkMath from "remark-math";
+import remarkParse from "remark-parse";
 import { unified } from "unified";
 import { visit } from "unist-util-visit";
 import { ObsidianFlavoredMarkdown, type ObsidianFlavoredMarkdownOptions } from "../src/transformer";
@@ -51,6 +53,31 @@ describe("math option", () => {
 
   it("math: false keeps dollar signs as text", async () => {
     const tree = await parse(markdown, { math: false });
+    expect(mathTypes(tree)).toEqual([]);
+    expect(text(tree)).toContain("price: $x$ per video");
+  });
+});
+
+// Under `strict` (remark-parse), the LaTeX plugin's `remark-math` registers its own math syntax,
+// after this plugin; `math: false` must still keep dollar signs text.
+describe("math option under preset: strict with remark-math", () => {
+  const markdown = "price: $x$ per video\n\n$$\ny^2\n$$\n";
+  async function parseStrict(opts: Partial<ObsidianFlavoredMarkdownOptions>): Promise<Root> {
+    const plugin = ObsidianFlavoredMarkdown({ preset: "strict", ...opts });
+    const file = { data: { slug: "page", frontmatter: {} } };
+    const processor = unified()
+      .use(remarkParse)
+      .use(plugin.markdownPlugins!({ allSlugs: [] } as never))
+      .use(remarkMath);
+    return (await processor.run(processor.parse(markdown), file as never)) as unknown as Root;
+  }
+
+  it("parses math by default", async () => {
+    expect(mathTypes(await parseStrict({}))).toEqual(["inlineMath", "math"]);
+  });
+
+  it("math: false keeps dollar signs as text", async () => {
+    const tree = await parseStrict({ math: false });
     expect(mathTypes(tree)).toEqual([]);
     expect(text(tree)).toContain("price: $x$ per video");
   });
