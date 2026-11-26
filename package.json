@@ -104,6 +104,7 @@
       "preset": "legacy",
       "comments": true,
       "highlight": true,
+      "math": true,
       "wikilinks": true,
       "callouts": true,
       "mermaid": true,
@@ -135,6 +136,9 @@
         "type": "boolean"
       },
       "highlight": {
+        "type": "boolean"
+      },
+      "math": {
         "type": "boolean"
       },
       "wikilinks": {

@@ -149,6 +149,11 @@ export interface ObsidianFlavoredMarkdownOptions {
   strictLineBreaks?: boolean;
   comments: boolean;
   highlight: boolean;
+  /**
+   * Parse `$inline$` and `$$display$$` math, as Obsidian does. Off, dollar signs are text
+   * (`cost of $2-$3`), for sites without math.
+   */
+  math: boolean;
   wikilinks: boolean;
   callouts: boolean;
   mermaid: boolean;
@@ -183,6 +188,7 @@ const defaultOptions: ObsidianFlavoredMarkdownOptions = {
   preset: "legacy",
   comments: true,
   highlight: true,
+  math: true,
   wikilinks: true,
   callouts: true,
   mermaid: true,
@@ -405,6 +411,7 @@ export const ObsidianFlavoredMarkdown: QuartzTransformerPlugin<
           wikilinks: opts.wikilinks,
           highlights: opts.highlight,
           comments: opts.comments,
+          math: opts.math,
           tags: opts.parseTags,
           customTaskChars: opts.enableCheckbox,
           callouts: opts.callouts,
