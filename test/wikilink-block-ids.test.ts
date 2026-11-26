@@ -35,8 +35,17 @@ describe("block ids and links, as in Obsidian", () => {
   });
 
   it("reads a Markdown link's ^id and a trailing one as the paragraph's", async () => {
-    expect(await render("x [text ^abc](n)\n")).toBe('<p id="abc">x <a href="n">text </a></p>');
-    expect(await render("x [[n]] ^rrr\n")).toBe('<p id="rrr">x <a href="n">n</a></p>');
+    expect(await render("x [text ^abc](n)\n")).toBe('<p id="^abc">x <a href="n">text </a></p>');
+    expect(await render("x [[n]] ^rrr\n")).toBe('<p id="^rrr">x <a href="n">n</a></p>');
+  });
+
+  it("gives a block the id ^id and points [[#^id]] at it, not at a heading of the same name", async () => {
+    const html = await render(
+      '<h2 id="para-1">Para 1</h2>\n\nsome para ^Para-1\n\n[[#^Para-1]] [[#Para 1]]\n',
+    );
+    expect(html).toContain('<p id="^para-1">some para</p>');
+    expect(html).toContain('<a href="#^para-1">^Para-1</a>');
+    expect(html).toContain('<a href="#para-1">Para 1</a>');
   });
 
   it("names a wikilink image by its path when the alias is empty or a size", async () => {
