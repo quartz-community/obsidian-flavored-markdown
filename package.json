@@ -116,6 +116,8 @@
       "enableCheckbox": false,
       "enableObsidianUri": true,
       "blockWrappers": true,
+      "foldHeadings": false,
+      "foldLists": false,
       "diagramRenderer": "pele"
     },
     "optionSchema": {
@@ -169,6 +171,12 @@
         "type": "boolean"
       },
       "blockWrappers": {
+        "type": "boolean"
+      },
+      "foldHeadings": {
+        "type": "boolean"
+      },
+      "foldLists": {
         "type": "boolean"
       },
       "diagramRenderer": {
