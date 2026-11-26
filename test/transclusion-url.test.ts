@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import type { Root, Paragraph, Html, Image } from "mdast";
+import type { Root, Paragraph, Parent, Html, Image } from "mdast";
 import type { Node } from "unist";
 
 vi.mock("../src/scripts/callout.inline", () => ({ default: "" }));
@@ -137,9 +137,17 @@ describe("transclusion URL handling", () => {
     expect(result.value).not.toContain('data-url="note.md"');
   });
 
+  it("gives note embeds Obsidian's embed classes", () => {
+    const tree = makeTree({ path: "note.md", embedded: true });
+    const result = transformTree(tree) as Html;
+    expect(result.value).toContain(
+      'class="transclude internal-embed markdown-embed inline-embed is-loaded"',
+    );
+  });
+
   it("keeps standard image embeds unchanged", () => {
     const tree = makeTree({ path: "photo.png", embedded: true });
-    const result = transformTree(tree) as Image;
+    const result = (transformTree(tree) as Parent).children[0] as Image;
 
     expect(result.type).toBe("image");
     expect(result.url).toBe("photo.png");

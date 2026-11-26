@@ -1,4 +1,4 @@
-code.mermaid,
+.mermaid,
 .mermaid-content {
   --pele-bg: var(--light);
   --pele-fg: var(--darkgray);
@@ -47,7 +47,13 @@ code.mermaid,
   }
 }
 
-pre {
+// The diagram and its controls: a code block (Mermaid.js), or Pele's own block.
+.mermaid-diagram {
+  position: relative;
+}
+
+pre,
+.mermaid-diagram {
   &:hover > .expand-button,
   &:focus-within > .expand-button {
     opacity: 1;

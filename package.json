@@ -118,7 +118,7 @@
       "blockWrappers": true,
       "foldHeadings": false,
       "foldLists": false,
-      "diagramRenderer": "mermaid"
+      "diagramRenderer": "pele"
     },
     "optionSchema": {
       "preset": {
