@@ -1,6 +1,6 @@
 {
   "name": "@quartz-community/obsidian-flavored-markdown",
-  "version": "2.4.0",
+  "version": "2.5.0",
   "description": "Obsidian Flavored Markdown transformer plugin for Quartz",
   "type": "module",
   "license": "MIT",
