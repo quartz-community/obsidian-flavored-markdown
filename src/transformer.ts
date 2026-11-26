@@ -162,6 +162,12 @@ export interface ObsidianFlavoredMarkdownOptions {
   enableCheckbox: boolean;
   enableObsidianUri: boolean;
   /**
+   * Embed a note, canvas or base written as a Markdown image (`![](note.md)`, `![](note)`,
+   * `![alt](board.canvas)`) as Obsidian does: the same transclusion as `![[note]]`, instead of a
+   * broken image. Obsidian writes embeds this way when "Use [[Wikilinks]]" is off.
+   */
+  markdownEmbeds: boolean;
+  /**
    * Wrap each of a note's top-level blocks in the div Obsidian's reading view puts it in
    * (`div.el-p > p`), which Obsidian themes space blocks with. No visible change without a theme.
    */
@@ -195,6 +201,7 @@ const defaultOptions: ObsidianFlavoredMarkdownOptions = {
   enableVideoEmbed: true,
   enableCheckbox: false,
   enableObsidianUri: true,
+  markdownEmbeds: true,
   blockWrappers: true,
   foldHeadings: false,
   foldLists: false,
@@ -294,6 +301,81 @@ function escapeAttribute(value: string): string {
     .replace(/"/g, "&quot;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;");
+}
+
+/**
+ * The embed of a note, canvas or base (`![[note#heading]]`): a transclusion, which Quartz fills
+ * in with the target's content when it renders the page.
+ */
+function transclusion(fp: string, anchor: string, alias: string | undefined): Html {
+  // Keep the file extension for virtual page transclusions (e.g. ![[file.canvas]],
+  // ![[file.base]]) so the links built-in can resolve the target unambiguously against
+  // allSlugs. Only strip .md since Markdown files never have extensions in their slugs.
+  const stripExt = path.extname(fp).toLowerCase() === ".md";
+  const transcludeUrl = slugifyFilePath(fp as FilePath, stripExt);
+  // Block references (^id) use exact key lookup — keep as-is. Heading anchors must be
+  // slugified to match the ids that heading producers give headings (the shared slugHeading).
+  const isBlockRef = anchor.startsWith("^");
+  const block = anchor ? `#${isBlockRef ? anchor : slugHeading(anchor)}` : "";
+  return {
+    type: "html",
+    data: { hProperties: { transclude: true } },
+    value: `<div class="transclude internal-embed markdown-embed inline-embed is-loaded" data-url="${escapeAttribute(transcludeUrl)}" data-block="${escapeAttribute(block)}" data-embed-alias="${escapeAttribute(alias ?? "")}"><a href="${escapeAttribute(
+      transcludeUrl + block,
+    )}" class="transclude-inner">Transclude of ${escapeHtml(transcludeUrl + block)}</a></div>`,
+  };
+}
+
+/** `decodeURIComponent`, or the text as written when it is not valid percent-encoding. */
+function safeDecode(text: string): string {
+  try {
+    return decodeURIComponent(text);
+  } catch {
+    return text;
+  }
+}
+
+/** Extensions of the files a Markdown embed (`![](x)`) transcludes rather than shows. */
+const transcludedExtensions = [".md", ".canvas", ".base"];
+
+/**
+ * Whether an extensionless link names a page, as Obsidian reads `![](note)` as `note.md`: relative
+ * to the note, from the root (`/note`), or by name anywhere. Without the build's slugs (older
+ * Quartz, tests) it does.
+ */
+export function pageChecker(
+  ctx: Partial<Pick<BuildCtx, "allSlugs">> | undefined,
+): (target: string, fromSlug: string) => boolean {
+  const slugs = ctx?.allSlugs ?? [];
+  if (!slugs.length) return () => true;
+  const all = new Set<string>(slugs);
+  const exists = (slug: string) => all.has(slug) || all.has(`${slug}/index`);
+  return (target, fromSlug) => {
+    const slug = slugifyFilePath(`${target}.md` as FilePath, true);
+    if (target.startsWith("/")) return exists(slug);
+    const relative = path.posix.normalize(path.posix.join(path.posix.dirname(fromSlug), slug));
+    if (exists(relative) || exists(slug)) return true;
+    const suffix = `/${slug}`;
+    for (const s of all) if (s.endsWith(suffix) || s.endsWith(`${suffix}/index`)) return true;
+    return false;
+  };
+}
+
+/**
+ * A `.base` embed names its file by vault path or by name, never relative to the note (that is
+ * how the bases plugin finds it). A path with folders in it is resolved here, against the note's
+ * folder (`../bases/x.base`) or the root (`/bases/x.base`), when that file exists.
+ */
+function baseEmbedPath(
+  target: string,
+  relativePath: string | undefined,
+  allFiles: readonly string[] | undefined,
+): string {
+  if (!target.includes("/") || !allFiles?.length) return target;
+  const resolved = target.startsWith("/")
+    ? target.slice(1)
+    : path.posix.normalize(path.posix.join(path.posix.dirname(relativePath ?? ""), target));
+  return allFiles.includes(resolved) ? resolved : target;
 }
 
 type WikilinkNode = Node & {
@@ -397,6 +479,7 @@ export const ObsidianFlavoredMarkdown: QuartzTransformerPlugin<
       const plugins: PluggableList = [];
       const hasTagPage = tagPageChecker(ctx);
       const hasAttachment = attachmentChecker(ctx);
+      const hasPage = pageChecker(ctx);
 
       plugins.push([
         remarkObsidian,
@@ -417,6 +500,36 @@ export const ObsidianFlavoredMarkdown: QuartzTransformerPlugin<
       plugins.push(() => {
         return (tree: Root, file) => {
           const base = pathToRoot(file.data.slug! as FullSlug);
+
+          if (opts.markdownEmbeds) {
+            // `![alt](note.md#heading)`: Obsidian embeds a note, canvas or base written as a
+            // Markdown link just as it embeds `![[note#heading|alt]]`, and reads a link
+            // without an extension (`![](note)`) as a note.
+            visit(tree, "image", (node: Image, index, parent) => {
+              if (!parent || index === undefined) return;
+              const url = node.url ?? "";
+              if (url === "" || url.startsWith("#")) return;
+              if (/^(?:[a-z][a-z\d+.-]*:|\/\/)/i.test(url)) return;
+              const hash = url.indexOf("#");
+              const target = safeDecode(hash === -1 ? url : url.slice(0, hash));
+              const anchor = hash === -1 ? "" : safeDecode(url.slice(hash + 1)).trim();
+              if (target === "" || target.endsWith("/")) return;
+              const ext = path.extname(target).toLowerCase();
+              if (
+                ext === ""
+                  ? !hasPage(target, file.data.slug ?? "")
+                  : !transcludedExtensions.includes(ext)
+              )
+                return;
+              const fp =
+                ext === ".base"
+                  ? baseEmbedPath(target, file.data.relativePath, ctx?.allFiles)
+                  : target.replace(/^\//, "");
+              const alias = node.alt?.trim() || undefined;
+              parent.children.splice(index, 1, transclusion(fp, anchor, alias) as never);
+              return SKIP;
+            });
+          }
 
           if (opts.wikilinks) {
             visit(
@@ -534,24 +647,7 @@ export const ObsidianFlavoredMarkdown: QuartzTransformerPlugin<
                       value: `<iframe src="${url}" class="pdf"></iframe>`,
                     };
                   } else {
-                    // Keep the file extension for virtual page transclusions (e.g.
-                    // ![[file.canvas]], ![[file.base]]) so CrawlLinks can resolve
-                    // the target unambiguously against allSlugs. Only strip .md
-                    // since Markdown files never have extensions in their slugs.
-                    const stripExt = ext === ".md";
-                    const transcludeUrl = slugifyFilePath(fp as FilePath, stripExt);
-                    // Block references (^id) use exact key lookup — keep as-is.
-                    // Heading anchors must be slugified to match the ids that
-                    // heading producers give headings (the shared slugHeading).
-                    const isBlockRef = anchor.startsWith("^");
-                    const block = anchor ? `#${isBlockRef ? anchor : slugHeading(anchor)}` : "";
-                    replacement = {
-                      type: "html",
-                      data: { hProperties: { transclude: true } },
-                      value: `<div class="transclude internal-embed markdown-embed inline-embed is-loaded" data-url="${transcludeUrl}" data-block="${block}" data-embed-alias="${alias ?? ""}"><a href="${
-                        transcludeUrl + block
-                      }" class="transclude-inner">Transclude of ${transcludeUrl}${block}</a></div>`,
-                    };
+                    replacement = transclusion(fp, anchor, alias);
                   }
                 } else if (fp.match(externalLinkRegex)) {
                   const linkNode: Link = {
