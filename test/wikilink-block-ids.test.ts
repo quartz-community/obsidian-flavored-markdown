@@ -15,7 +15,8 @@ import { ObsidianFlavoredMarkdown } from "../src/transformer";
 
 /** Quartz's chain: OFM's markdown plugins, remark-rehype's conversion, OFM's html plugins. */
 async function render(markdown: string): Promise<string> {
-  const plugin = ObsidianFlavoredMarkdown({});
+  // The paragraph itself, without the block wrapper around it.
+  const plugin = ObsidianFlavoredMarkdown({ blockWrappers: false });
   const file = { data: { slug: "page", frontmatter: {} } };
   const markdownProcessor = unified().use(plugin.markdownPlugins!({ allSlugs: [] } as never));
   const mdast = await markdownProcessor.run(markdownProcessor.parse(markdown), file as never);

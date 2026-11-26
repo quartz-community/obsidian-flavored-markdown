@@ -158,6 +158,11 @@ export interface ObsidianFlavoredMarkdownOptions {
   enableVideoEmbed: boolean;
   enableCheckbox: boolean;
   enableObsidianUri: boolean;
+  /**
+   * Wrap each of a note's top-level blocks in the div Obsidian's reading view puts it in
+   * (`div.el-p > p`), which Obsidian themes space blocks with. No visible change without a theme.
+   */
+  blockWrappers: boolean;
 }
 
 const defaultOptions: ObsidianFlavoredMarkdownOptions = {
@@ -176,6 +181,7 @@ const defaultOptions: ObsidianFlavoredMarkdownOptions = {
   enableVideoEmbed: true,
   enableCheckbox: false,
   enableObsidianUri: true,
+  blockWrappers: true,
 };
 
 const calloutMapping = {
@@ -366,6 +372,8 @@ export const ObsidianFlavoredMarkdown: QuartzTransformerPlugin<
   Partial<ObsidianFlavoredMarkdownOptions>
 > = (userOpts) => {
   const opts = { ...defaultOptions, ...userOpts };
+  // Shared with other plugins (@quartz-themes/core checks it: its theme CSS expects the wrappers).
+  (globalThis as Record<string, unknown>).__quartzBlockWrappers = opts.blockWrappers;
 
   return {
     name: "ObsidianFlavoredMarkdown",
@@ -836,6 +844,7 @@ export const ObsidianFlavoredMarkdown: QuartzTransformerPlugin<
           checkbox: opts.enableCheckbox,
           mermaid: opts.mermaid,
           obsidianUri: opts.enableObsidianUri,
+          blockWrappers: opts.blockWrappers,
         },
       ]);
       // After rehype-obsidian, whose footnote renumbering must still count the references
