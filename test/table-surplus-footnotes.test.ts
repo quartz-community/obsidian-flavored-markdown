@@ -125,23 +125,28 @@ describe("footnotes referenced in a table cell past the header's columns", () =>
     expect(backLinks(html)).toBe(0);
   });
 
-  // bug: removeSurplusFootnoteReferences (src/util/surplus-footnotes.ts) runs after
-  // rehype-obsidian, which writes a footnote's first back-link as `↩︎` (U+21A9 U+FE0E, text
-  // presentation, no emoji). The back-link it renumbers to first loses the sup but stays a bare
-  // `↩` (an emoji on some platforms), and it puts spaces between the remaining back-links,
-  // which the page's other footnotes don't have.
-  it.fails(
-    "leave the footnote's back-links as they would be without the hidden reference",
-    async () => {
-      const strip = (html: string) =>
-        footnotes(html)
-          .replace(/ href="[^"]*"/g, "")
-          .replace(/<\/section>.*$/s, "");
-      const withHidden = await render(
-        "| a |\n| --- |\n| b | x[^1] |\n\nc [^1] d [^1]\n\n[^1]: Footnote.\n",
-      );
-      const without = await render("| a |\n| --- |\n| b |\n\nc [^1] d [^1]\n\n[^1]: Footnote.\n");
-      expect(strip(withHidden)).toBe(strip(without));
-    },
-  );
+  it("leave the footnote's back-links as they would be without the hidden reference", async () => {
+    const strip = (html: string) =>
+      footnotes(html)
+        .replace(/ href="[^"]*"/g, "")
+        .replace(/<\/section>.*$/s, "");
+    const withHidden = await render(
+      "| a |\n| --- |\n| b | x[^1] |\n\nc [^1] d [^1]\n\n[^1]: Footnote.\n",
+    );
+    const without = await render("| a |\n| --- |\n| b |\n\nc [^1] d [^1]\n\n[^1]: Footnote.\n");
+    expect(strip(withHidden)).toBe(strip(without));
+  });
+
+  it("leave a footnote's back-links as they would be when the first one stays", async () => {
+    const strip = (html: string) =>
+      footnotes(html)
+        .replace(/ href="[^"]*"/g, "")
+        .replace(/<\/section>.*$/s, "");
+    const withHidden = await render(
+      "c [^1]\n\n| a |\n| --- |\n| b | x[^1] |\n\nd [^1]\n\n[^1]: Footnote.\n",
+    );
+    const without = await render("c [^1]\n\n| a |\n| --- |\n| b |\n\nd [^1]\n\n[^1]: Footnote.\n");
+    expect(strip(withHidden)).toBe(strip(without));
+    expect(footnotes(withHidden)).toContain("↩\uFE0E");
+  });
 });

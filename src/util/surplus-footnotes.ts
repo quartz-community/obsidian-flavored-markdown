@@ -97,8 +97,8 @@ export function removeSurplusFootnoteReferences(tree: HastRoot): void {
     );
     const head = node.children.slice(0, first);
     const rebuilt: ElementContent[] = [];
+    // As rehype-obsidian leaves a footnote's back-links: next to each other, without spaces.
     kept.forEach((backReference, at) => {
-      if (at > 0) rebuilt.push({ type: "text", value: " " });
       renumberBackReference(backReference, at + 1);
       rebuilt.push(backReference);
     });
@@ -115,15 +115,23 @@ export function removeSurplusFootnoteReferences(tree: HastRoot): void {
   });
 }
 
-/** The n-th remaining back-link of a footnote reads `↩`, `↩²`, … as `mdast-util-to-hast` writes them. */
+/**
+ * The n-th remaining back-link of a footnote reads `↩︎`, `↩²`, … as rehype-obsidian leaves them:
+ * the first one in text presentation (U+FE0E, not an emoji), the others as `mdast-util-to-hast`
+ * writes them.
+ */
 function renumberBackReference(backReference: Element, n: number): void {
   const label = backReference.properties.ariaLabel;
   if (typeof label === "string") {
     backReference.properties.ariaLabel = label.replace(/-\d+$/, "") + (n > 1 ? `-${n}` : "");
   }
-  const children: ElementContent[] = backReference.children.filter(
-    (child) => !isElement(child, "sup"),
-  );
+  const children: ElementContent[] = backReference.children
+    .filter((child) => !isElement(child, "sup"))
+    .map((child) =>
+      child.type === "text" && /^↩\uFE0E?$/.test(child.value)
+        ? { ...child, value: n > 1 ? "↩" : "↩\uFE0E" }
+        : child,
+    );
   if (n > 1) {
     children.push({
       type: "element",
