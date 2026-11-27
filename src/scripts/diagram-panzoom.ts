@@ -7,6 +7,32 @@ interface Position {
   y: number;
 }
 
+/**
+ * One zoom step of the popup: the scale moves by `delta`, clamped to `[min, max]`, and the pan
+ * moves so the zoom happens around the content's center. `rect` is the content's on-screen
+ * (already scaled) size, as `getBoundingClientRect()` gives it.
+ */
+export function zoomStep(
+  pan: Position,
+  scale: number,
+  delta: number,
+  rect: { width: number; height: number },
+  min: number,
+  max: number,
+): { pan: Position; scale: number } {
+  const newScale = Math.min(Math.max(scale + delta, min), max);
+
+  // Zoom around center
+  const centerX = rect.width / 2;
+  const centerY = rect.height / 2;
+
+  const scaleDiff = newScale - scale;
+  return {
+    pan: { x: pan.x - centerX * scaleDiff, y: pan.y - centerY * scaleDiff },
+    scale: newScale,
+  };
+}
+
 export class DiagramPanZoom {
   private isDragging = false;
   private startPan: Position = { x: 0, y: 0 };
@@ -144,18 +170,10 @@ export class DiagramPanZoom {
   }
 
   private zoom(delta: number) {
-    const newScale = Math.min(Math.max(this.scale + delta, this.MIN_SCALE), this.MAX_SCALE);
-
-    // Zoom around center
     const rect = this.content.getBoundingClientRect();
-    const centerX = rect.width / 2;
-    const centerY = rect.height / 2;
-
-    const scaleDiff = newScale - this.scale;
-    this.currentPan.x -= centerX * scaleDiff;
-    this.currentPan.y -= centerY * scaleDiff;
-
-    this.scale = newScale;
+    const next = zoomStep(this.currentPan, this.scale, delta, rect, this.MIN_SCALE, this.MAX_SCALE);
+    this.currentPan = next.pan;
+    this.scale = next.scale;
     this.updateTransform();
   }
 
