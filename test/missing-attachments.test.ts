@@ -69,6 +69,12 @@ describe("embeds of missing attachments, as in Obsidian", () => {
     expect(await render("![[./c.pdf]]", slugs, "sub/note")).toBe(missing("./c.pdf"));
   });
 
+  it("escapes the file name in the message and its attributes", async () => {
+    expect(await render('![[a&b <c> "d".pdf]]', ["note"])).toBe(
+      missing("a&amp;b &lt;c&gt; &quot;d&quot;.pdf"),
+    );
+  });
+
   it("embeds everything without the build's slugs", () => {
     expect(attachmentChecker(undefined)("missing.pdf")).toBe(true);
     expect(attachmentChecker({ allSlugs: [] })("missing.pdf")).toBe(true);
