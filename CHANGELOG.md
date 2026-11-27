@@ -1,5 +1,14 @@
 # Changelog
 
+## 2.5.4
+
+### Patch Changes
+
+- ebcbd4c: The diagram popup's zoom buttons keep the diagram centred when it is already zoomed, instead of sliding it sideways with each click.
+- 06d6960: With `enableInHtmlEmbed`, `#tags` are linked only in an HTML block's text, no longer inside attribute values (`style="color: #ff0000"`), comments, scripts or styles.
+- 06d6960: With `enableInHtmlEmbed`, wikilinks inside HTML blocks are turned into links again (the deprecated `wikilinkRegex` export matches wikilinks again).
+- ba188d0: A footnote also referenced in a hidden table cell gets the same back-links as other footnotes: the first reads `↩︎` (not an emoji), without spaces between them.
+
 ## 2.5.3
 
 ### Patch Changes
