@@ -24,11 +24,7 @@ function html(value: string, opts: Record<string, unknown> = {}): string {
 }
 
 describe("enableInHtmlEmbed", () => {
-  // bug: wikilinkRegex (src/transformer.ts) never matches a wikilink: in `[^[]\]#|\\]+` the
-  // class ends at `[^[]`, so the `|` splits the group into two alternatives and the pattern
-  // only matches oddities such as `[[a]#]]`. The comment above it documents the intended
-  // `[^\[\]\|\#]+`. With enableInHtmlEmbed, `[[Note]]` in an HTML block stays as text.
-  it.fails("turns wikilinks into links, with the alias or the target as text", () => {
+  it("turns wikilinks into links, with the alias or the target as text", () => {
     expect(html("<div>[[Some Note]]</div>")).toBe(
       '<div><a href="Some Note" data-wikilink>Some Note</a></div>',
     );
@@ -37,7 +33,7 @@ describe("enableInHtmlEmbed", () => {
     );
   });
 
-  it.fails("slugifies a heading anchor, keeps a block id, and names both in the text", () => {
+  it("slugifies a heading anchor, keeps a block id, and names both in the text", () => {
     expect(html("<div>[[Note#My Heading]]</div>")).toBe(
       '<div><a href="Note#my-heading" data-wikilink>Note > My Heading</a></div>',
     );
@@ -49,7 +45,7 @@ describe("enableInHtmlEmbed", () => {
     );
   });
 
-  it.fails("links external wikilink targets as written", () => {
+  it("links external wikilink targets as written", () => {
     expect(html("<div>[[https://example.com|site]]</div>")).toBe(
       '<div><a href="https://example.com" data-wikilink>site</a></div>',
     );
@@ -75,11 +71,24 @@ describe("enableInHtmlEmbed", () => {
     expect(html("<p>see #topic</p>", { parseTags: false })).toBe("<p>see #topic</p>");
   });
 
-  // bug: the #tag replacement (src/transformer.ts, enableInHtmlEmbed) runs over the whole HTML
-  // source, attributes included, so a colour such as `style="color: #ff0000"` becomes an <a>
-  // inside the attribute and the element's markup breaks.
-  it.fails("leaves # inside attribute values alone", () => {
+  it("leaves # inside attribute values alone", () => {
     const source = '<span style="color: #ff0000">red</span>';
     expect(html(source)).toBe(source);
+  });
+
+  it("leaves several wikilinks on a line apart, and malformed ones as text", () => {
+    expect(html("<p>[[A]] and [[B|b]]</p>")).toBe(
+      '<p><a href="A" data-wikilink>A</a> and <a href="B" data-wikilink>b</a></p>',
+    );
+    expect(html("<p>[[a]#]]</p>")).toBe("<p>[[a]#]]</p>");
+  });
+
+  it("leaves # in comments, scripts and styles alone, and links tags in the text around them", () => {
+    const source =
+      "<div>\n<style>\n#main { color: red }\n</style>\n<!-- #draft -->\n<script>\nlet x = 1 #y\n</script>\n</div>";
+    expect(html(source)).toBe(source);
+    expect(html('<span title="a #b"> #topic</span>')).toBe(
+      '<span title="a #b"> <a href="../tags/topic" class="tag-link tag">topic</a></span>',
+    );
   });
 });
