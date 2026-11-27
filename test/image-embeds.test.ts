@@ -92,6 +92,11 @@ describe("image embeds, as in Obsidian", () => {
     expect(external).toContain('<p><img src="https://example.com/cat.png" alt="A cat"></p>');
     expect(external).not.toContain("image-embed");
   });
+
+  it("wraps no other Markdown embeds: a video is a bare <video>, another file a bare <img>", async () => {
+    expect(await render("![](clip.mp4)")).toBe('<p><video controls src="clip.mp4"></video></p>');
+    expect(await render("![x](file.txt)")).toBe('<p><img src="file.txt" alt="x"></p>');
+  });
 });
 
 describe("Mermaid fences", () => {

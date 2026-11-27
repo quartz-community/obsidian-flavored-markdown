@@ -76,8 +76,8 @@ describe("headingLevel", () => {
 describe("foldHeadings / foldLists options", () => {
   const resources = (opts: Parameters<typeof ObsidianFlavoredMarkdown>[0]) =>
     ObsidianFlavoredMarkdown(opts).externalResources!({} as never) as {
-      js: { script?: string }[];
-      css: { content: string }[];
+      js: { script?: string; loadTime?: string; contentType?: string }[];
+      css: { content: string; inline?: boolean }[];
     };
   const foldScripts = (r: ReturnType<typeof resources>) =>
     r.js.filter((s) => s.script?.includes("/* fold script */"));
@@ -96,6 +96,14 @@ describe("foldHeadings / foldLists options", () => {
     expect(script!.script).toContain('const __OFM_FOLD__ = {"headings":true,"lists":false};');
     const [style] = foldStyles(r);
     expect(style!.content).toMatch(/^@layer quartz-base \{/);
+
+    // an inline script that runs once the DOM is ready, and an inline stylesheet
+    expect(script).toEqual({
+      script: expect.stringMatching(/^const __OFM_FOLD__ = .*;\n\/\* fold script \*\/$/),
+      loadTime: "afterDOMReady",
+      contentType: "inline",
+    });
+    expect(style).toEqual({ content: expect.stringContaining("/* fold style */"), inline: true });
 
     const lists = foldScripts(resources({ foldLists: true }));
     expect(lists[0]!.script).toContain('{"headings":false,"lists":true}');

@@ -105,7 +105,8 @@ describe("Markdown-link embeds", () => {
       "../other",
       "folder",
     ]);
-    expect(html).toContain('src="missing"');
+    // no page of that name: a plain image, not a transclusion nor an image embed
+    expect(html.split("\n").at(-1)).toBe('<p><img src="missing"></p>');
   });
 
   it("resolve a base's folder path against the note's folder or the root", async () => {
