@@ -38,14 +38,14 @@ describe("zoomStep", () => {
     }
   });
 
-  // bug: zoomStep (src/scripts/diagram-panzoom.ts) takes the center from the *scaled* size
-  // (rect.width / 2) instead of the diagram's own (rect.width / 2 / scale), so once zoomed in,
-  // every further + / - click also slides the diagram: at scale 2 an 800px-wide diagram moves
-  // 40px left per click, at scale 3 80px.
-  it.fails("keeps the diagram's center in place when already zoomed in", () => {
-    const start = { pan: { x: 100, y: 50 }, scale: 2 };
-    const next = zoomStep(start.pan, start.scale, 0.1, onScreen(start), 0.5, 3);
-    expect(centerOnScreen(next).x).toBeCloseTo(centerOnScreen(start).x);
-    expect(centerOnScreen(next).y).toBeCloseTo(centerOnScreen(start).y);
+  it("keeps the diagram's center in place when already zoomed in", () => {
+    for (const scale of [2, 0.7, 2.95]) {
+      const start = { pan: { x: 100, y: 50 }, scale };
+      for (const delta of [0.1, -0.1]) {
+        const next = zoomStep(start.pan, start.scale, delta, onScreen(start), 0.5, 3);
+        expect(centerOnScreen(next).x).toBeCloseTo(centerOnScreen(start).x);
+        expect(centerOnScreen(next).y).toBeCloseTo(centerOnScreen(start).y);
+      }
+    }
   });
 });

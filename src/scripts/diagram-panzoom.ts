@@ -22,9 +22,9 @@ export function zoomStep(
 ): { pan: Position; scale: number } {
   const newScale = Math.min(Math.max(scale + delta, min), max);
 
-  // Zoom around center
-  const centerX = rect.width / 2;
-  const centerY = rect.height / 2;
+  // Zoom around the content's center: its point at half its unscaled size (the rect is scaled)
+  const centerX = rect.width / 2 / scale;
+  const centerY = rect.height / 2 / scale;
 
   const scaleDiff = newScale - scale;
   return {
