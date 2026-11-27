@@ -262,8 +262,22 @@ export const externalLinkRegex = /^https?:\/\//i;
 // (\\?\|[^\[\]\#]+)? -> optional escape \ then | then zero or more non-special characters (alias)
 // Deprecated: retained for backwards compatibility only; parsing now uses remark-obsidian.
 export const wikilinkRegex = new RegExp(
-  /!?\[\[([^[]\]#|\\]+)?(#+[^[]\]#|\\]+)?(\\?\|[^[]\]#]*)?\]\]/g,
+  /!?\[\[([^[\]#|\\]+)?(#+[^[\]#|\\]+)?(\\?\|[^[\]#]*)?\]\]/g,
 );
+/**
+ * The parts of an HTML source that are not text, as `[start, end)` offsets: tags (with their
+ * attributes), comments, and the contents of `<script>` and `<style>` elements.
+ */
+function htmlMarkupRanges(html: string): Array<[number, number]> {
+  const ranges: Array<[number, number]> = [];
+  const markup =
+    /<!--[\s\S]*?(?:-->|$)|<(script|style)\b[^>]*>[\s\S]*?(?:<\/\1\s*>|$)|<\/?[a-zA-Z!?][^>]*>?/gi;
+  for (const match of html.matchAll(markup)) {
+    ranges.push([match.index, match.index + match[0].length]);
+  }
+  return ranges;
+}
+
 // (?<=^| )             -> a lookbehind assertion, tag should start be separated by a space or be the start of the line
 // #(...)               -> capturing group, tag itself must start with #
 // (?:[-_\p{L}\d\p{Z}])+       -> non-capturing group, non-empty string of (Unicode-aware) alpha-numeric characters and symbols, hyphens and/or underscores
@@ -821,9 +835,13 @@ export const ObsidianFlavoredMarkdown: QuartzTransformerPlugin<
               }
 
               if (opts.parseTags) {
+                // in the text only: not in tags (`style="color: #f00"`), comments, scripts or styles
+                const markup = htmlMarkupRanges(node.value);
                 node.value = node.value.replace(
                   /(?<=^|\s)#((?:[-_\p{L}\d])+(?:\/[-_\p{L}\d]+)*)/gu,
-                  (_match, tag: string) => {
+                  (match: string, tag: string, offset: number) => {
+                    if (markup.some(([start, end]) => offset >= start && offset < end))
+                      return match;
                     if (/^[\d/]+$/.test(tag)) return `#${tag}`;
                     const slug = slugTag(tag);
                     if (!hasTagPage(slug))

@@ -171,6 +171,21 @@ describe("Markdown-link embeds", () => {
     expect(html).toContain('<img src="pic.png" alt="pic">');
   });
 
+  it("leave a link to a folder alone", async () => {
+    const html = await render("![](sub/)");
+    expect(transclusions(html)).toEqual([]);
+    expect(html).toContain('<img src="sub/"');
+  });
+
+  it("keep a base's folder path as written without the build's file list", async () => {
+    const html = await render("![](../bases/projects.base)", {
+      ctx: { allSlugs: ["notes/page"] },
+      slug: "notes/page",
+      relativePath: "notes/page.md",
+    });
+    expect(transclusions(html)).toEqual([["../bases/projects.base", "", ""]]);
+  });
+
   it("can be turned off", async () => {
     const html = await render("![](other.md)", { opts: { markdownEmbeds: false } });
     expect(transclusions(html)).toEqual([]);
@@ -189,5 +204,13 @@ describe("pageChecker", () => {
     expect(has("folder", "page")).toBe(true);
     expect(has("missing", "page")).toBe(false);
     expect(pageChecker(undefined)("anything", "page")).toBe(true);
+  });
+
+  it("slugifies the name as Quartz does, and finds a nested folder note by name", () => {
+    const has = pageChecker({ allSlugs: ["notes/my-note", "a/topic/index"] as never });
+    expect(has("My Note", "page")).toBe(true);
+    expect(has("notes/My Note", "page")).toBe(true);
+    expect(has("topic", "page")).toBe(true);
+    expect(has("pic", "page")).toBe(false);
   });
 });
